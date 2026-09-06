@@ -1,0 +1,58 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # uv is not optional: marimo needs it to resolve local imports and build
+      # them into wheels for the browser.
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build site
+        run: ./build.sh site
+
+      - name: Check local wheels were bundled
+        # The export succeeds even when local module resolution silently fails,
+        # and the failure then only appears as an import error in the reader's
+        # browser. Fail the build here instead.
+        run: |
+          for dir in site/*/; do
+            if [ -f "$dir/index.html" ] && ! ls "$dir"public/wheels/*.whl >/dev/null 2>&1; then
+              echo "No local wheel bundled for $dir"
+              echo "Check [tool.marimo.runtime] pythonpath in pyproject.toml"
+              exit 1
+            fi
+          done
+          echo "Local wheels present in every notebook export."
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

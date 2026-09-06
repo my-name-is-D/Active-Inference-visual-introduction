@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Active inference, by running it</title>
+<style>
+  :root { --ink:#1a1a1a; --dim:#5a5a5a; --rule:#d8d8d8; --bg:#fdfdfc; --accent:#1f6f5c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#e8e8e6; --dim:#a0a09c; --rule:#3a3a38; --bg:#131312; --accent:#6fc2a8; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font: 16px/1.65 Georgia, "Iowan Old Style", "Times New Roman", serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  h1 { font-size: 1.9rem; line-height:1.2; margin:0 0 .4rem; letter-spacing:-.01em; }
+  .sub { color:var(--dim); font-size:1.02rem; margin:0 0 2rem; }
+  h2 { font-size:1.15rem; margin:2.5rem 0 .6rem; }
+  p { margin:0 0 1rem; }
+  a { color:var(--accent); }
+  .note {
+    border-left:3px solid var(--rule); padding:.1rem 0 .1rem 1rem;
+    color:var(--dim); font-size:.95rem; margin:1.5rem 0;
+  }
+  ol.toc { list-style:none; padding:0; margin:1rem 0 0; }
+  ol.toc li { border-top:1px solid var(--rule); padding:.85rem 0; }
+  ol.toc li:last-child { border-bottom:1px solid var(--rule); }
+  .t { font-weight:600; }
+  .d { color:var(--dim); font-size:.95rem; display:block; }
+  .pending { color:var(--dim); }
+  footer { margin-top:3rem; padding-top:1rem; border-top:1px solid var(--rule);
+           color:var(--dim); font-size:.88rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Active inference, by running it</h1>
+  <p class="sub">
+    An interactive tutorial. Every equation appears only after you have run the
+    code it describes.
+  </p>
+
+  <p>
+    The organising question is a practical one: <strong>what does this give you
+    that a reward function does not?</strong> The answer is demonstrated
+    numerically rather than asserted, and where the framework is expensive or
+    awkward, that is demonstrated too.
+  </p>
+
+  <div class="note">
+    <strong>These pages run Python in your browser.</strong> The first one takes
+    roughly 20 to 30 seconds to load, because it downloads a Python runtime
+    along with numpy and matplotlib. Nothing is sent to a server. A laptop is
+    strongly recommended: the notebooks put figures side by side and are
+    cramped on a phone.
+  </div>
+
+  <h2>What this is not</h2>
+  <p>
+    It is not a library, and not a benchmark. For real work,
+    <a href="https://github.com/infer-actively/pymdp">pymdp</a> is the reference
+    implementation and the better choice. Everything here is re-derived in plain
+    numpy because the purpose is comprehension, not deployment. Active inference
+    also does not beat reinforcement learning asymptotically; the last notebook
+    is about when not to use it.
+  </p>
+
+  <h2>The notebooks</h2>
+  <ol class="toc">
+    <li>
+      <span class="t"><a href="./smoke/">Deployment smoke test</a></span>
+      <span class="d">Proves the build works. Not teaching material.</span>
+    </li>
+    <li class="pending">
+      <span class="t">0. The world and the loop</span>
+      <span class="d">A gridworld, a perceive-plan-act loop, and an agent that
+      acts at random. No equations.</span>
+    </li>
+    <li class="pending">
+      <span class="t">1. Perception</span>
+      <span class="d">Where the agent probably is. Bayes as arithmetic you
+      already know.</span>
+    </li>
+    <li class="pending">
+      <span class="t">1b. Imagination</span>
+      <span class="d">Rolling the transition model forward. Prediction with
+      nothing to score it against yet.</span>
+    </li>
+    <li class="pending">
+      <span class="t">2. Why an agent looks before it moves</span>
+      <span class="d">Expected free energy, decomposed. The argument the
+      repository exists to make.</span>
+    </li>
+    <li class="pending">
+      <span class="t">3. Novelty</span>
+      <span class="d">The same expression, with the model itself uncertain.</span>
+    </li>
+    <li class="pending">
+      <span class="t">4. Preferences, and what they cost</span>
+      <span class="d">Preference as a distribution, and four limitations shown
+      rather than claimed.</span>
+    </li>
+    <li class="pending">
+      <span class="t">5. When not to use this</span>
+      <span class="d">Zero one term and the agent becomes a reward maximiser.</span>
+    </li>
+  </ol>
+
+  <footer>
+    Source on <a
+    href="https://github.com/my-name-is-D/Active-Inference-visual-introduction">GitHub</a>.
+    Apache License 2.0.
+  </footer>
+</main>
+</body>
+</html>

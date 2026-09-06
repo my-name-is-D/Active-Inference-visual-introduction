@@ -1,0 +1,31 @@
+[project]
+name = "aif-tutorial"
+version = "0.0.0"
+description = "An interactive tutorial on active inference"
+requires-python = ">=3.10"
+dependencies = [
+    "marimo>=0.10",
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Packages bundled into wheels for the browser. marimo discovers local modules
+# imported by a notebook and builds a wheel for each, which requires uv at
+# export time. Every package listed here must stay pure Python.
+[tool.hatch.build.targets.wheel]
+packages = ["smoke"]
+
+# Notebooks live in nb/ while the packages they import live at the repository
+# root. marimo resolves local imports relative to the notebook directory plus
+# the roots listed here, and only resolved modules get built into wheels for
+# the browser. Without this the export still succeeds, and then the import
+# fails at runtime in Pyodide with no build error to warn you.
+[tool.marimo.runtime]
+pythonpath = ["."]

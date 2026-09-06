@@ -1,0 +1,6 @@
+site/
+.venv/
+__pycache__/
+*.pyc
+.marimo.toml
+__marimo__/
