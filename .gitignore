@@ -1,6 +1,20 @@
+# Build output
 site/
+
+# Python
 .venv/
 __pycache__/
 *.pyc
+
+# marimo
 .marimo.toml
 __marimo__/
+
+# Agent tooling 
+.claude/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

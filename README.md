@@ -44,36 +44,51 @@ marimo copies files it finds beside the notebook into the output.
 
 ## Measurements from the deployment spike
 
-Measured with headless Chromium against the built site on a local server, so
-these are lower bounds: a real reader over a real connection will be slower.
+Local figures come from headless Chromium against the built site on a local
+server. The deployed figure was measured by hand on the published page.
 
 | Measurement | Result |
 |---|---|
-| Cold load to first output | 22.5 s |
-| Cold load to full execution | 29.5 s |
-| Second page, warm cache | 20.5 s |
+| Cold load, deployed page | about 30 s |
+| Cold load to first output, local | 22.5 s |
+| Cold load to full execution, local | 29.5 s |
+| Second page, warm cache, local | 20.5 s |
 | Site size, two notebooks | 57 MB |
 | Runtime in browser | Python 3.14.2, numpy 2.4.3, emscripten |
 
-**Interaction idioms**, all confirmed working in the export:
+**Interaction idioms**, all confirmed working on the deployed page:
 
 | Idiom | Result |
 |---|---|
 | `mo.ui.slider` driving a recomputed figure | works |
-| `mo.ui.dropdown` selection | works |
 | `mo.accordion` collapsible depth section | works |
-| `mo.ui.matplotlib` selection on a figure | works |
+| `mo.ui.matplotlib` picking a tile on a figure | works |
 
 A plain `plt.figure` renders as a static image and cannot be clicked. Wrapping
-an `Axes` in `mo.ui.matplotlib` renders it to a canvas instead and returns the
-dragged region in data coordinates, so the reader can pick a tile on the grid
-directly. A drag over the tile at row 3, column 1 returned `x_min=0.62,
-x_max=1.18, y_min=2.94, y_max=3.50`, whose midpoint rounds to that tile.
+an `Axes` in `mo.ui.matplotlib` returns the selected region in data
+coordinates, so the reader can pick a tile on the grid directly.
 
-The selection is a box rather than a point, so a single tile is picked by
-rounding the midpoint. Desktop toolkits such as tkinter are not an option:
-they need an OS window, which does not exist in the browser sandbox, and they
-are not shipped in Pyodide.
+Three things about that widget are worth knowing before building on it.
+
+- **It reads as a click, not a drag.** The widget is a box selector, so a
+  click yields a box of zero area, and press-and-drag does not track the
+  pointer the way a drag normally would. Tell the reader to click.
+- **Pass `debounce=True`.** The default streams the value during the
+  interaction and passes through the empty selection, which makes any output
+  downstream flicker away mid-click.
+- **The empty value is an `EmptySelection` object, not `None`.** Test it with
+  a plain truth check. A shift-drag gives a `LassoSelection` carrying
+  `vertices` rather than a box, so code that assumes a box will raise.
+
+Tile geometry needs care. With `extent=(0, 5, 5, 0)` a tile `(r, c)` covers
+`x` in `[c, c+1]` and `y` in `[r, r+1]`, so a coordinate maps to a tile by
+taking its floor, and ticks belong at the tile centres. Putting tile centres
+on the integers instead makes the ticks label the boundaries between tiles,
+and the grid then looks misaligned with what the reader is clicking.
+
+Desktop toolkits such as tkinter are not an option: they need an OS window,
+which does not exist in the browser sandbox, and they are not shipped in
+Pyodide.
 
 **On sharing assets between pages.** Every notebook export contains its own
 identical 28 MB copy of the marimo and Pyodide assets. Loading a second page
@@ -85,6 +100,13 @@ roughly in half but would not make the second page meaningfully faster.
 The practical consequence is that **each page load costs the reader about
 twenty seconds**, which argues for fewer, longer notebooks rather than many
 short ones, and for the landing page saying so plainly.
+
+**One figure, updated in place.** When the reader interacts with a figure,
+that figure must change. The smoke notebook currently lights the picked tile
+by drawing a second grid below the pickable one, which leaves two grids on
+screen showing different states. That is a limitation of the spike, not a
+pattern to copy: the teaching notebooks must update the figure the reader
+clicked.
 
 ## Relationship to pymdp
 
