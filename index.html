@@ -4,58 +4,126 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Active inference, by running it</title>
-<style>
-  :root { --ink:#1a1a1a; --dim:#5a5a5a; --rule:#d8d8d8; --bg:#fdfdfc; --accent:#1f6f5c; }
-  @media (prefers-color-scheme: dark) {
-    :root { --ink:#e8e8e6; --dim:#a0a09c; --rule:#3a3a38; --bg:#131312; --accent:#6fc2a8; }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin:0; background:var(--bg); color:var(--ink);
-    font: 16px/1.65 Georgia, "Iowan Old Style", "Times New Roman", serif;
-  }
-  main { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
-  h1 { font-size: 1.9rem; line-height:1.2; margin:0 0 .4rem; letter-spacing:-.01em; }
-  .sub { color:var(--dim); font-size:1.02rem; margin:0 0 2rem; }
-  h2 { font-size:1.15rem; margin:2.5rem 0 .6rem; }
-  p { margin:0 0 1rem; }
-  a { color:var(--accent); }
-  .note {
-    border-left:3px solid var(--rule); padding:.1rem 0 .1rem 1rem;
-    color:var(--dim); font-size:.95rem; margin:1.5rem 0;
-  }
-  ol.toc { list-style:none; padding:0; margin:1rem 0 0; }
-  ol.toc li { border-top:1px solid var(--rule); padding:.85rem 0; }
-  ol.toc li:last-child { border-bottom:1px solid var(--rule); }
-  .t { font-weight:600; }
-  .d { color:var(--dim); font-size:.95rem; display:block; }
-  .pending { color:var(--dim); }
-  footer { margin-top:3rem; padding-top:1rem; border-top:1px solid var(--rule);
-           color:var(--dim); font-size:.88rem; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9em; }
-</style>
+<link rel="stylesheet" href="page.css">
 </head>
 <body>
 <main>
   <h1>Active inference, by running it</h1>
   <p class="sub">
-    An interactive tutorial. Every equation appears only after you have run the
-    code it describes.
+    Walking in the dark
   </p>
 
   <p>
-    The organising question is a practical one: <strong>what does this give you
-    that a reward function does not?</strong> The answer is demonstrated
-    numerically rather than asserted, and where the framework is expensive or
-    awkward, that is demonstrated too.
+    The power goes out at night, in a flat you have lived in for years.
+  </p>
+
+  <p>
+    You do not stand still. You do not wait for a torch. You get up and you
+    walk, and somewhere along the way you put a hand out and touch a wall, and
+    you carry on walking, and you arrive at the door.
+  </p>
+
+  <p>
+    Something happened on that walk that is worth stopping on, and it is not
+    the arriving.
+  </p>
+
+  <p>
+    You put your hand out expecting a bookshelf, and what you touch is a
+    table. You are surprised, and the surprise is the useful part, because it
+    can only happen if you were expecting something in the first place. You
+    were not moving blind. You were carrying an expectation, and the table has
+    just contradicted it.
+  </p>
+
+  <p>
+    Two things follow, and they are worth keeping apart. The first is that you
+    now think differently about where you are. You are further along than you
+    thought, or you drifted left in the dark, and that revision is important
+    to plan the next step. The second is optional, and depends on what you
+    came for. If you were only passing through, you carry on to the door with
+    a corrected sense of your position. If you wanted the bookshelf, you now
+    go and look for it, and where you look is decided by the sense of your
+    position you have just corrected.
+  </p>
+
+  <p>
+    Notice what did not happen. You did not freeze, and you did not go back to
+    where you started because you got confused and had to begin again.
+  </p>
+
+  <p>
+    You were not holding the belief that the bookshelf was in front of you as
+    a unique truth. You thought it more probable than anything else, but you
+    never discarded the other options. That is the proposal active inference
+    can make: not a claim about where you are with absolute certainty, but a
+    standing account of how plausible every place is, revised as things
+    arrive.
+  </p>
+
+  <p>
+    The hand that finds a table does not end the walk, it changes what you
+    think is likely. What you were most sure of loses ground, what you had
+    almost dismissed gains it, and everything you had worked out before the
+    mistake is still there. Recovery is not a repair you carry out afterwards.
+    It is what happens by itself when you were never committed to one answer
+    in the first place.
+  </p>
+
+  <p>
+    This tutorial is about writing this mechanism as numbers you can run, and
+    about how those numbers move when evidence arrives.
+  </p>
+
+  <p>
+    Notice how little the table actually told you. Not where you are, not to
+    a floorboard. Past the bookshelf, along that wall, somewhere in a stretch
+    of about two metres. You did not refine it further and nothing in the walk
+    asked you to. The exact answer, the one that would say precisely where you
+    stand, was never available to you in the dark and would have cost more
+    than it was worth. You went to the door on something rough, and rough was
+    enough.
+  </p>
+
+  <p>
+    You also kept moving while you were unsure, and the more you moved, the
+    less certain you were about where you stood. Any of those steps could have
+    been slightly long or slightly short, and you had nothing to check them
+    against. Nothing failed. You lost confidence in your own position simply
+    by acting without a point of reference, and confidence lost that way does
+    not come back on its own.
+  </p>
+
+  <p>
+    Then there was the moment you stopped. You put a hand out deliberately,
+    not to get anywhere, but to find out where you were. You gave up a step to
+    buy an answer.
+  </p>
+
+  <p>
+    In a flat you did not know, you would have made that trade far more often.
+    You would have touched things you had no need of, opened your hand against
+    surfaces that told you nothing about the route, simply because you had
+    never touched them before.
+  </p>
+
+  <p>
+    And through all of it you were going somewhere. Not accumulating points,
+    not maximising anything you could name. Going to the door.
+  </p>
+
+  <p>
+    Seven questions, one walk. Each of the seven is a lesson here, in that
+    order, and each one ends with code small enough that you can read every
+    number in it.
   </p>
 
   <div class="note">
-    <strong>These pages run Python in your browser.</strong> The first one takes
-    roughly 20 to 30 seconds to load, because it downloads a Python runtime
-    along with numpy and matplotlib. Nothing is sent to a server. A laptop is
-    strongly recommended: the notebooks put figures side by side and are
-    cramped on a phone.
+    <strong>An interactive tutorial.</strong> Every equation appears only
+    after you have run the code it describes. These pages are static and load
+    immediately: the interactive parts are small JavaScript widgets, and
+    nothing is sent to a server. A laptop is recommended, the lessons put
+    figures side by side and are cramped on a phone.
   </div>
 
   <h2>What this is not</h2>
@@ -64,47 +132,46 @@
     <a href="https://github.com/infer-actively/pymdp">pymdp</a> is the reference
     implementation and the better choice. Everything here is re-derived in plain
     numpy because the purpose is comprehension, not deployment. Active inference
-    also does not beat reinforcement learning asymptotically; the last notebook
+    also does not beat reinforcement learning asymptotically; the last lesson
     is about when not to use it.
   </p>
 
-  <h2>The notebooks</h2>
+  <h2>The lessons</h2>
   <ol class="toc">
     <li>
-      <span class="t"><a href="./smoke/">Deployment smoke test</a></span>
-      <span class="d">Proves the build works. Not teaching material.</span>
+      <span class="t"><a href="./lesson-1.html">Lesson 1. Where am I?</a></span>
+      <span class="d">A lamp, a grid, and an agent that cannot see where it is.
+      Why one answer is not enough, and what a belief is instead. Bayes' rule,
+      multiplied out by hand.</span>
+    </li>
+    <li>
+      <span class="t"><a href="./perception-and-belief.html">Perception and
+      belief: where am I?</a></span>
+      <span class="d">The world, the loop, and a belief: not a position, but a
+      distribution over positions. Bayes as three multiplications.</span>
     </li>
     <li class="pending">
-      <span class="t">0. The world and the loop</span>
-      <span class="d">A gridworld, a perceive-plan-act loop, and an agent that
-      acts at random. No equations.</span>
-    </li>
-    <li class="pending">
-      <span class="t">1. Perception</span>
-      <span class="d">Where the agent probably is. Bayes as arithmetic you
-      already know.</span>
-    </li>
-    <li class="pending">
-      <span class="t">1b. Imagination</span>
+      <span class="t">Imagination and prediction</span>
       <span class="d">Rolling the transition model forward. Prediction with
       nothing to score it against yet.</span>
     </li>
     <li class="pending">
-      <span class="t">2. Why an agent looks before it moves</span>
+      <span class="t">Expected free energy: why an agent looks before it
+      moves</span>
       <span class="d">Expected free energy, decomposed. The argument the
       repository exists to make.</span>
     </li>
     <li class="pending">
-      <span class="t">3. Novelty</span>
+      <span class="t">Novelty and an uncertain model</span>
       <span class="d">The same expression, with the model itself uncertain.</span>
     </li>
     <li class="pending">
-      <span class="t">4. Preferences, and what they cost</span>
+      <span class="t">Preferences, and what they cost</span>
       <span class="d">Preference as a distribution, and four limitations shown
       rather than claimed.</span>
     </li>
     <li class="pending">
-      <span class="t">5. When not to use this</span>
+      <span class="t">When not to use this</span>
       <span class="d">Zero one term and the agent becomes a reward maximiser.</span>
     </li>
   </ol>

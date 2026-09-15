@@ -1,0 +1,52 @@
+/* Deliberately light only: the matplotlib figures and canvas widgets are
+   drawn on white, so a dark page turns them into glaring rectangles. A
+   reader who wants dark can use a browser reader mode or extension. */
+:root { --ink:#1a1a1a; --dim:#5a5a5a; --rule:#d8d8d8; --bg:#fdfdfc; --accent:#1f6f5c; color-scheme:light; }
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--ink);
+  font: 16px/1.65 Georgia, "Iowan Old Style", "Times New Roman", serif;
+}
+main { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+h1 { font-size: 1.9rem; line-height:1.2; margin:0 0 .4rem; letter-spacing:-.01em; }
+.sub { color:var(--dim); font-size:1.02rem; margin:0 0 2rem; }
+h2 { font-size:1.15rem; margin:2.5rem 0 .6rem; }
+p { margin:0 0 1rem; }
+a { color:var(--accent); }
+.note {
+  border-left:3px solid var(--rule); padding:.1rem 0 .1rem 1rem;
+  color:var(--dim); font-size:.95rem; margin:1.5rem 0;
+}
+ol.toc { list-style:none; padding:0; margin:1rem 0 0; }
+ol.toc li { border-top:1px solid var(--rule); padding:.85rem 0; }
+ol.toc li:last-child { border-bottom:1px solid var(--rule); }
+.t { font-weight:600; }
+.d { color:var(--dim); font-size:.95rem; display:block; }
+.pending { color:var(--dim); }
+footer { margin-top:3rem; padding-top:1rem; border-top:1px solid var(--rule);
+         color:var(--dim); font-size:.88rem; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9em; }
+pre { overflow-x:auto; background:rgba(127,127,127,.08); padding:.9rem 1rem; border-radius:4px; }
+pre code { font-size:.85em; }
+table { border-collapse:collapse; margin:1rem 0; font-size:.95rem; }
+th, td { border:1px solid var(--rule); padding:.4rem .7rem; text-align:left; }
+img { display:block; max-width:100%; margin:1.5rem 0; }
+details { margin:1.5rem 0; border-left:3px solid var(--rule); padding-left:1rem; }
+summary { cursor:pointer; color:var(--accent); font-weight:600; }
+.widget { margin:1.5rem 0; padding:1rem; border:1px solid var(--rule); border-radius:4px; }
+.widget canvas { display:block; }
+.widget button { margin-right:.4rem; padding:.3rem .7rem; }
+/* Asides: the "if you want the number behind the bar" / "if matrix products do
+   not yet read as sums" boxes. Set off as a panel so a reader can see at a
+   glance that the passage is optional and skip it. */
+blockquote { margin:1.5rem 0; padding:.9rem 1.1rem; background:#f6f6f4;
+  border-left:3px solid var(--accent); border-radius:3px; }
+blockquote > :first-child { margin-top:0; }
+blockquote > :last-child { margin-bottom:0; }
+
+hr { border:none; border-top:1px solid var(--rule); margin:2.5rem 0; }
+
+/* Display math and wide tables do not reflow, so give each its own scroll
+   container rather than letting the whole page scroll sideways on a phone. */
+.katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: .3rem; }
+table { display: block; overflow-x: auto; max-width: 100%; }

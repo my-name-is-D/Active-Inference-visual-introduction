@@ -12,6 +12,7 @@ __marimo__/
 
 # Agent tooling 
 .claude/
+doc
 
 # Editors and OS
 .vscode/

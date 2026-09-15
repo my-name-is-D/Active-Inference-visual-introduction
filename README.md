@@ -5,108 +5,56 @@ mathematics off-putting, are unconvinced the theory buys them anything, or are
 unsure how to use it concretely. The organising question throughout is **what
 does this give me that a reward function does not?**
 
-The notebooks run Python in the browser through WebAssembly, so there is
-nothing to install to read them.
+Each lesson is one static HTML page built from a Markdown source. The prose and
+maths are rendered at build time; the interactive parts are small JavaScript
+widgets that draw to a canvas. Nothing runs in the browser except those
+widgets, so the pages load immediately.
 
 ## Status
 
-Work package 0 is complete: the deployment pipeline works and its assumptions
-are verified. No teaching content exists yet.
+Work package 0 (the deployment pipeline) and the first lesson,
+`content/perception-and-belief.md`, are done. The remaining lessons are listed
+on the landing page.
 
 ## Running locally
 
 ```sh
-uv run marimo edit nb/NB0_smoke.py   # edit a notebook
-./build.sh site                      # build the static site
+$EDITOR content/perception-and-belief.md   # edit a lesson
+$EDITOR site-src/widgets.js                # edit the interactive widgets
+./build.sh site                            # build the static site
 python3 -m http.server --directory site
 ```
 
 The exported site must be served over HTTP. Opening `index.html` from the
-filesystem will not work.
+filesystem will not work (the pages load `aif.js` as an ES module).
 
 ## How the build works
 
-Each notebook is exported to its own directory under `site/`, so opening one
-page does not execute the others. `build.sh` is the single source of truth and
-CI runs the same script.
+`build.py` is the whole build, and `build.sh` is a one-line wrapper so CI runs
+the same thing. For each entry in `PAGES` it:
 
-**The one thing that is easy to get wrong:** marimo bundles the local packages
-a notebook imports into wheels for the browser, and it finds them through
-`[tool.marimo.runtime] pythonpath` in `pyproject.toml`. Notebooks live in
-`nb/` while the packages live at the repository root, so without that setting
-the export still succeeds and the import then fails in the reader's browser
-with no build error. The deploy workflow fails the build if any notebook
-export is missing its wheel, because the failure is otherwise invisible until
-a reader hits it.
+- renders the Markdown to HTML with the `markdown` package;
+- replaces `<figure src="NAME">` with an `<img>` to a `NAME.svg` it generates
+  by calling into `rendering/plots.py`, so the non-interactive figures are
+  real matplotlib output;
+- turns `<widget id="NAME">` into a mount point that `site-src/widgets.js`
+  finds and fills;
+- wraps the result in a page shell that loads `page.css`, vendored KaTeX,
+  `aif.js`, and `widgets.js`.
 
-`build.sh` also deletes `CLAUDE.md` and similar files from the export, since
-marimo copies files it finds beside the notebook into the output.
+`markdown` is a build-time dependency only, under the `build` extra in
+`pyproject.toml`. It never reaches the reader.
 
-## Measurements from the deployment spike
+## The JavaScript twin
 
-Local figures come from headless Chromium against the built site on a local
-server. The deployed figure was measured by hand on the published page.
+`site-src/aif.js` reimplements the belief maths from `aif/` (the update,
+prediction, surprise, and the `A` and `B` models) so the widgets can run it in
+the browser. The Python in `aif/` stays the tested reference.
 
-| Measurement | Result |
-|---|---|
-| Cold load, deployed page | about 30 s |
-| Cold load to first output, local | 22.5 s |
-| Cold load to full execution, local | 29.5 s |
-| Second page, warm cache, local | 20.5 s |
-| Site size, two notebooks | 57 MB |
-| Runtime in browser | Python 3.14.2, numpy 2.4.3, emscripten |
-
-**Interaction idioms**, all confirmed working on the deployed page:
-
-| Idiom | Result |
-|---|---|
-| `mo.ui.slider` driving a recomputed figure | works |
-| `mo.accordion` collapsible depth section | works |
-| `mo.ui.matplotlib` picking a tile on a figure | works |
-
-A plain `plt.figure` renders as a static image and cannot be clicked. Wrapping
-an `Axes` in `mo.ui.matplotlib` returns the selected region in data
-coordinates, so the reader can pick a tile on the grid directly.
-
-Three things about that widget are worth knowing before building on it.
-
-- **It reads as a click, not a drag.** The widget is a box selector, so a
-  click yields a box of zero area, and press-and-drag does not track the
-  pointer the way a drag normally would. Tell the reader to click.
-- **Pass `debounce=True`.** The default streams the value during the
-  interaction and passes through the empty selection, which makes any output
-  downstream flicker away mid-click.
-- **The empty value is an `EmptySelection` object, not `None`.** Test it with
-  a plain truth check. A shift-drag gives a `LassoSelection` carrying
-  `vertices` rather than a box, so code that assumes a box will raise.
-
-Tile geometry needs care. With `extent=(0, 5, 5, 0)` a tile `(r, c)` covers
-`x` in `[c, c+1]` and `y` in `[r, r+1]`, so a coordinate maps to a tile by
-taking its floor, and ticks belong at the tile centres. Putting tile centres
-on the integers instead makes the ticks label the boundaries between tiles,
-and the grid then looks misaligned with what the reader is clicking.
-
-Desktop toolkits such as tkinter are not an option: they need an OS window,
-which does not exist in the browser sandbox, and they are not shipped in
-Pyodide.
-
-**On sharing assets between pages.** Every notebook export contains its own
-identical 28 MB copy of the marimo and Pyodide assets. Loading a second page
-with a warm cache took 20.5 s against 23.5 s cold, so the browser cache is
-doing less than hoped and most of the cost is Pyodide starting up rather than
-downloading. Deduplicating the asset directories would cut the site size
-roughly in half but would not make the second page meaningfully faster.
-
-The practical consequence is that **each page load costs the reader about
-twenty seconds**, which argues for fewer, longer notebooks rather than many
-short ones, and for the landing page saying so plainly.
-
-**One figure, updated in place.** When the reader interacts with a figure,
-that figure must change. The smoke notebook currently lights the picked tile
-by drawing a second grid below the pickable one, which leaves two grids on
-screen showing different states. That is a limitation of the spike, not a
-pattern to copy: the teaching notebooks must update the figure the reader
-clicked.
+`aif/beliefs.py`'s `demo()` writes `aif/belief_cases.json`, a set of
+`(prior, A, observation)` cases with the posterior the Python produces.
+`node site-src/aif.js` asserts the JavaScript reproduces every one. CI runs
+both, so the two implementations cannot drift apart silently.
 
 ## Relationship to pymdp
 
@@ -114,7 +62,7 @@ clicked.
 implementation for active inference in discrete state spaces, and the right
 choice for real work. Nothing here depends on it. Everything is re-derived in
 plain numpy because the purpose is comprehension rather than deployment, and
-because pymdp 1.0.0 is JAX-first, which cannot run in the browser.
+nothing here runs in the browser anyway.
 
 ## Conventions
 
@@ -126,6 +74,12 @@ words: `expected_free_energy` rather than `efe`. The asymmetry is deliberate.
 normalised distribution, which keeps the hand-computation exercises feasible.
 Papers vary, and a distribution is recovered by exponentiating and
 normalising.
+
+The figures print numbers on anything that carries a claim, so no argument
+depends on colour alone, and use perceptually uniform colourmaps.
+
+When the reader interacts with a figure, that figure changes in place; a second
+figure never appears below it to show the result.
 
 ## Licence
 
