@@ -51,11 +51,11 @@ export function makeSlider(el, label, value) {
 }
 
 // ===========================================================================
-// Lamp gridworld: every tile is lit or dark, the agent senses only which, and
+// Lamp gridworld: every cell is lit or dark, the agent senses only which, and
 // it never moves. Two observations, DARK and LIT. Shared across every lesson
 // that reuses this scenario, not specific to any one page. The constants are
 // fixed because lesson prose quotes numbers that depend on them: three lit
-// tiles, a uniform prior, and this exact reading sequence.
+// cells, a uniform prior, and this exact reading sequence.
 // ===========================================================================
 
 export const ROWS = 5;
@@ -64,13 +64,13 @@ export const N = ROWS * COLS;
 export const DARK = 0;
 export const LIT = 1;
 export const LIT_TILES = [10, 19, 22];
-export const AGENT_TILE = 10; // a side (edge, non-corner) lit tile
+export const AGENT_TILE = 10; // a side (edge, non-corner) lit cell
 export const SEQUENCE = [LIT, LIT, DARK, LIT, DARK, LIT, LIT];
 export const LIT_MASK = Array.from({ length: N }, (_, s) => LIT_TILES.includes(s));
 export const A_LAMP = lampObservationModel(LIT_MASK);
 
-// The featureless world: no tile is lit, so every column of A is identical and
-// a reading carries no information about which tile the agent is on. This is
+// The featureless world: no cell is lit, so every column of A is identical and
+// a reading carries no information about which cell the agent is on. This is
 // perceptual aliasing in its purest form, and it reuses the lamp machinery
 // rather than adding a second observation model.
 export const DARK_MASK = Array.from({ length: N }, () => false);
@@ -106,8 +106,8 @@ export function lampBeliefs() {
 }
 
 // A flat 5x5 grid. `opts.agent` draws the red circle, `opts.observed` overrides
-// what the agent's own tile is showing this step, `opts.mark` rings one tile.
-// `opts.showIds` prints the tile index (0..24) in each cell, matching the
+// what the agent's own cell is showing this step, `opts.mark` rings one cell.
+// `opts.showIds` prints the cell index (0..24) in each cell, matching the
 // column index printed above the A matrix, so the two can be read together.
 export function drawGrid(ctx, x, y, cell, opts = {}) {
   const { agent = null, observed = null, mark = null, lit = LIT_MASK, showIds = false } = opts;
@@ -124,7 +124,7 @@ export function drawGrid(ctx, x, y, cell, opts = {}) {
     }
     if (showIds) {
       // Bold, white, centred, with a dark outline: readable on both the
-      // near-black dark tiles and the pale-yellow lit ones, matching the
+      // near-black dark cells and the pale-yellow lit ones, matching the
       // treatment of the probability numbers in the A matrix.
       const cx = x + c * cell + (cell - 2) / 2;
       const cy = y + r * cell + (cell - 2) / 2;
@@ -159,7 +159,7 @@ export function drawGrid(ctx, x, y, cell, opts = {}) {
 
 // A belief drawn as one bar per cell, scaled so the tallest bar in this
 // specific belief fills the band: the two callers (a real posterior, and a
-// one-tile spike) have very different peak heights and both need to read as
+// one-cell spike) have very different peak heights and both need to read as
 // "this fills the picture", not "this is a sliver next to empty space".
 export function drawBeliefBar(ctx, x, y, w, belief) {
   const h = 64;
@@ -182,25 +182,25 @@ export function drawBeliefBar(ctx, x, y, w, belief) {
   ctx.stroke();
 }
 
-// A one-hot belief: certainty on a single tile, 0 everywhere else. Passed to
+// A one-hot belief: certainty on a single cell, 0 everywhere else. Passed to
 // drawBeliefBar the same way a real posterior is, so committing to one answer
 // renders on the same footing as the ordinary belief: same bar chart, same
 // scale rule, just a spike instead of a smooth shape.
-export function oneHot(tile) {
+export function oneHot(cell) {
   const dist = new Array(N).fill(0);
-  dist[tile] = 1;
+  dist[cell] = 1;
   return dist;
 }
 
 // Isometric projection of the 5x5 plane. Returns the screen point for a grid
-// coordinate at height h (0..1). Tiles are drawn as diamonds, back to front.
+// coordinate at height h (0..1). Cells are drawn as diamonds, back to front.
 function iso(row, col, h, ox, oy, cell, lift) {
   return [ox + (col - row) * cell * 0.9, oy + (col + row) * cell * 0.5 - h * lift];
 }
 
 export function drawIsoPlane(ctx, ox, oy, cell, opts = {}) {
   const { heights = null, agent = null, observed = null, lit = LIT_MASK } = opts;
-  // Back to front so nearer tiles and taller bumps overdraw what is behind.
+  // Back to front so nearer cells and taller bumps overdraw what is behind.
   const order = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) order.push([r, c]);
   order.sort((a, b) => a[0] + a[1] - (b[0] + b[1]));
@@ -233,7 +233,7 @@ export function drawIsoPlane(ctx, ox, oy, cell, opts = {}) {
       ctx.fill();
     }
 
-    // A gaussian bump. A stack of closely spaced ellipses from the tile
+    // A gaussian bump. A stack of closely spaced ellipses from the cell
     // upwards, so it reads as one surface. Both the height AND the footprint
     // scale with the probability: a 0.1 bump must look small next to a 0.8
     // one, not merely shorter, or the picture contradicts the numbers.
@@ -294,14 +294,14 @@ export function label(ctx, text, x, y, colour = COLOUR.dim, size = 16) {
 }
 
 // Shared matrix drawing for a-columns and a-rows. Rows are observations in the
-// order [dark, lit]; columns are tiles. Cells take their observation's colour,
+// order [dark, lit]; columns are cells. Cells take their observation's colour,
 // with opacity standing for the probability. MX/MY are the default origin;
 // a-columns overrides y to sit the matrix under its own grid.
 export const MX = 70;
 export const MY = 90;
 export const MCELL = 40;
 
-// The A matrix, drawn with axes: a tile index above every column, "dark"/"lit"
+// The A matrix, drawn with axes: a cell index above every column, "dark"/"lit"
 // row labels on the left, and the probability printed on each cell, large and
 // white with a dark outline so it reads against both the dark and lit fills.
 export function drawMatrix(ctx, { markCol = null, markRow = null, upTo = null, x = MX, y = MY } = {}) {
@@ -346,7 +346,7 @@ export function drawMatrix(ctx, { markCol = null, markRow = null, upTo = null, x
   ctx.textAlign = "left";
   label(ctx, "dark", x - 46, y + MCELL / 2 + 4, COLOUR.ink);
   label(ctx, "lit", x - 46, y + MCELL + MCELL / 2 + 4, COLOUR.ink);
-  label(ctx, "tile (column) index, 0 to 24", x, y + 2 * MCELL + 22);
+  label(ctx, "cell (column) index, 0 to 24", x, y + 2 * MCELL + 22);
   if (markCol !== null) {
     ctx.strokeStyle = COLOUR.agent;
     ctx.lineWidth = 2;
@@ -377,5 +377,198 @@ export function mountAll() {
     } catch (err) {
       console.error(`widget "${id}" failed:`, err);
     }
+  }
+}
+
+// --- row stack and operand grids ------------------------------------------
+// Promoted out of lesson-2's conserves-vs-not, which is still the shape both
+// use: a labelled row of numbered bars with its totals set apart on the right,
+// and a numeric grid with a totals strip. Lesson 3 draws four of these rows
+// per figure and two of these grids, so the geometry that was closure state
+// there is explicit parameters here. Lesson 2's rendering is unchanged.
+
+export const ROW = {
+  leftX: 24,
+  barX: 250,
+  barW: 56,
+  barH: 26,
+  totalGap: 26,
+};
+
+// `values` are drawn as bars scaled to the largest in the row, so a row always
+// fills its band whatever its peak. `totals` is a list of {label, value, note,
+// emphasis} drawn to the right, one column each: lesson 2 passes one, lesson 3
+// passes F, the divergence and their difference side by side.
+//
+// `signed` puts the zero line through the middle of the band and lets bars run
+// both ways, for the log-ratio rows whose terms are negative wherever q is
+// less confident than the posterior. Each bar then prints its value with an
+// explicit sign, because the sign is what the reader is meant to read; the
+// direction of the bar only carries the magnitude.
+export function drawRow(ctx, y, opts) {
+  const {
+    title,
+    subtitle = "",
+    values,
+    totals = [],
+    note = "",
+    signed = false,
+    scale = null,
+    n = values.length,
+    x = ROW.barX,
+    barW = ROW.barW,
+    barH = ROW.barH,
+    leftX = ROW.leftX,
+    colour = COLOUR.neutral,
+    dimmed = false,
+    textSize = 13,      // titles, subtitles, notes: the written text
+    valueSize = 13,     // the number printed under each bar
+    totalSize = 20,
+  } = opts;
+
+  label(ctx, title, leftX, y - 4, dimmed ? COLOUR.dim : COLOUR.ink, Math.max(16, textSize));
+  // A signed row prints its values where an ordinary row's subtitle goes, so
+  // its subtitle moves above the title rather than colliding with the numbers.
+  if (subtitle) {
+    if (signed) label(ctx, subtitle, leftX, y - barH - 8, COLOUR.dim, textSize);
+    else label(ctx, subtitle, leftX, y + textSize + 2, COLOUR.dim, textSize);
+  }
+
+  // A shared scale is passed in when two rows must be read against each other
+  // (the log ratio and the same ratio reweighted by q): computing each row's
+  // own peak would rescale the second one back up and hide the reweighting,
+  // which is the whole claim of that figure.
+  const peak = scale ?? Math.max(...values.map((v) => Math.abs(v)), 1e-9);
+  const zero = signed ? y - barH / 2 : y;
+
+  for (let i = 0; i < n; i++) {
+    const bx = x + i * barW;
+    const w = barW - 8;
+    ctx.fillStyle = "#eef1f4";
+    ctx.fillRect(bx, y - barH, w, barH);
+    const h = (Math.abs(values[i]) / peak) * (signed ? barH / 2 : barH);
+    ctx.fillStyle = signed && values[i] < 0 ? COLOUR.agent : colour;
+    ctx.fillRect(bx, values[i] < 0 && signed ? zero : zero - h, w, h);
+    if (signed) {
+      ctx.strokeStyle = COLOUR.dim;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx, zero + 0.5);
+      ctx.lineTo(bx + w, zero + 0.5);
+      ctx.stroke();
+    }
+    ctx.font = `${valueSize}px system-ui, sans-serif`;
+    ctx.fillStyle = COLOUR.dim;
+    ctx.textAlign = "center";
+    const text = signed
+      ? (values[i] >= 0 ? "+" : "") + values[i].toFixed(2)
+      : values[i].toFixed(2);
+    ctx.fillText(text, bx + w / 2, y + 15);
+    ctx.textAlign = "left";
+  }
+
+  let tx = x + n * barW + ROW.totalGap;
+  for (const t of totals) {
+    if (t.label) label(ctx, t.label, tx, y - barH + 2, COLOUR.dim, textSize);
+    ctx.font = `bold ${totalSize}px system-ui, sans-serif`;
+    ctx.fillStyle = t.emphasis ? COLOUR.agent : COLOUR.ink;
+    ctx.fillText(t.value, tx, y + 2);
+    if (t.note) label(ctx, t.note, tx, y + 20, COLOUR.dim, 13);
+    tx += t.width ?? 90;
+  }
+  if (note) label(ctx, note, tx, y + 2, COLOUR.dim, 13);
+  return tx;
+}
+
+export const OP_CELL = 42;
+
+// A grid of numbers with a totals strip. `totalsAlong` is "cols" when each
+// column is a distribution, "row" for a single row whose total is the point,
+// and null for a grid whose totals say nothing worth printing.
+export function drawOperand(ctx, x, y, values, opts = {}) {
+  const {
+    rows = values.length,
+    cols = values[0].length,
+    totalsAlong = null,
+    title = "",
+    colAxis = "",
+    rowAxis = "",
+    cell = OP_CELL,
+    colour = COLOUR.neutral,
+  } = opts;
+
+  if (title) label(ctx, title, x, y - 44, COLOUR.ink);
+  if (colAxis) label(ctx, colAxis, x, y - 26, COLOUR.dim, 13);
+  if (rowAxis) {
+    ctx.save();
+    ctx.translate(x - 30, y + (rows * cell) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLOUR.dim;
+    ctx.font = "13px system-ui, sans-serif";
+    ctx.fillText(rowAxis, 0, 0);
+    ctx.textAlign = "left";
+    ctx.restore();
+  }
+
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.fillStyle = COLOUR.dim;
+  ctx.textAlign = "center";
+  for (let j = 0; j < cols; j++) {
+    ctx.fillText(String(j), x + j * cell + (cell - 2) / 2, y - 5);
+  }
+  if (rows > 1) {
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let i = 0; i < rows; i++) {
+      ctx.fillText(String(i), x - 6, y + i * cell + (cell - 2) / 2);
+    }
+    ctx.textBaseline = "alphabetic";
+  }
+  ctx.textAlign = "left";
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const v = values[i][j];
+      const cx = x + j * cell;
+      const cy = y + i * cell;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(cx, cy, cell - 2, cell - 2);
+      if (v > 1e-9) {
+        ctx.globalAlpha = 0.12 + 0.6 * Math.min(1, v);
+        ctx.fillStyle = colour;
+        ctx.fillRect(cx, cy, cell - 2, cell - 2);
+        ctx.globalAlpha = 1;
+      }
+      ctx.strokeStyle = COLOUR.rule;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 3, cell - 3);
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillStyle = v > 1e-9 ? COLOUR.ink : COLOUR.rule;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(v > 1e-9 ? v.toFixed(2) : ".", cx + (cell - 2) / 2, cy + (cell - 2) / 2);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    }
+  }
+
+  const ty = y + rows * cell + 16;
+  if (totalsAlong === "cols") {
+    for (let j = 0; j < cols; j++) {
+      let t = 0;
+      for (let i = 0; i < rows; i++) t += values[i][j];
+      ctx.font = "bold 13px system-ui, sans-serif";
+      ctx.fillStyle = COLOUR.ink;
+      ctx.textAlign = "center";
+      ctx.fillText(t.toFixed(2), x + j * cell + (cell - 2) / 2, ty);
+      ctx.textAlign = "left";
+    }
+  } else if (totalsAlong === "row") {
+    let t = 0;
+    for (let j = 0; j < cols; j++) t += values[0][j];
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillStyle = COLOUR.agent;
+    ctx.fillText(t.toFixed(2), x + cols * cell + 10, y + (cell - 2) / 2 + 4);
   }
 }

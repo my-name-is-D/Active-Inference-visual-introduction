@@ -28,7 +28,7 @@ To account for its own movement, the agent needs something that says where a ste
 
 Call it *B*, it is the **transition model**. For each cell the agent might be standing on, *B* says how likely it is to end up on each of the cells after taking a step.
 
-Read it one origin at a time, exactly as you read *A*. Fix a starting tile. Look down the column belonging to it. What you find is a set of probabilities saying how likely each destination is, given that you started there and moved. It's giving you how likely you are to transition between two states. 
+Read it one origin at a time, exactly as you read *A*. Fix a starting cell. Look down the column belonging to it. What you find is a set of probabilities saying how likely each destination is, given that you started there and moved. It's giving you how likely you are to transition between two states. 
 
 $$B_{ij} = p(s' = i \mid s = j)$$
 
@@ -39,7 +39,7 @@ $$\sum_i B_{ij} = 1 \quad \text{for every } j$$
 
 Each column sums to one, because wherever the agent starts, it ends up somewhere.
 
-//show a part of the matrix as 5 by 5 for instance (let's be clear it's part using ... or something), over the matrix show what the column and row are with a title, click on "show summing up", and we see each column sum to 1 with a small text explaining why// 
+<widget id="b-columns"></widget>
 
 
 This is the second table the agent carries, and there will be more. Its model of the world is not a single object but a collection of them, and everything added later is added to this collection.
@@ -72,7 +72,7 @@ This is also why the spread in *B* is the realistic modelling rather than a pess
 >
 > The bar is the belief's **entropy**, the standard measure of how spread out a distribution is:
 >
-> $$H = -\sum_s q(s) \log q(s)$$
+> $$H = -\sum_s p(s) \log p(s)$$
 >
 > It is zero when the belief sits entirely on one cell, and largest when the belief is even across all twenty-five. Nothing else in this lesson needs it; the bar is labelled sharp and flat and can be read without it.
 
@@ -119,6 +119,8 @@ The agent can step east, south, west or north, or stay where it is. Those are fi
 So *B* gains an index:
 
 $$B_{ijk} = p(s' = i \mid s = j, a = k)$$
+
+<widget id="b-stack"></widget>
 
 or in code, `B[s_next, s, a]`. It is a stack of matrices, one per action. Every one of them has columns summing to one, for the same reason as before: whatever the agent does, it ends up somewhere.
 The first two indices are ordered, because states are: the belief is a list of cells in a fixed order, and B is square in that order. The third is not. Which table holds "north" and which holds "stay put" is arbitrary; the action index only selects a table, and all that matters is that the choice is fixed once and used consistently everywhere.
@@ -202,7 +204,7 @@ Note that the first equation carries a proportional sign and the second an equal
 
 The prediction step is a matrix product. Every cell the agent might currently be on contributes to every cell it might end up on. The sum runs over the whole grid, and a cell the agent considers implausible contributes proportionally little. In the example only (2,2) and (2,3) carried any appreciable belief, so those were the two contributions that mattered. The result sums to one on its own, and needs no correction.
 
-//show it happens at some point//
+<widget id="conserves-vs-not"></widget>
 
 The difference follows from the shape of *B*. Each column of *B* belongs to one starting cell *s*, and it holds the probability of arriving at each cell *s'* on the grid from that start, under one action. Those probabilities sum to one because the agent ends up somewhere: wherever it starts, some destination receives it. So whatever belief the agent had in a starting cell is passed on in full, spread across the destinations that cell can reach, and nothing is lost or created on the way. Add up all the destinations and you have the same total you began with.
 

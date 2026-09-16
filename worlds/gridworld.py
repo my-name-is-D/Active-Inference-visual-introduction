@@ -1,4 +1,4 @@
-"""A grid the agent moves on, and what it can see from each tile.
+"""A grid the agent moves on, and what it can see from each cell.
 
 The whole tutorial runs on this one world so that a change in behaviour is
 visibly a change in the objective, not a change in the problem. Four
@@ -40,12 +40,12 @@ class GridWorld:
         goal: (row, col) the agent is trying to reach.
         start: (row, col) the agent begins at. Defaults to the top left.
         lit: array of shape `size`, True where the agent can see its position.
-            Defaults to every tile lit, the perception-lesson configuration.
-        sensor_noise: probability that a lit tile reports a neighbouring
+            Defaults to every cell lit, the perception-lesson configuration.
+        sensor_noise: probability that a lit cell reports a neighbouring
             position instead of the true one. 0 means a perfect sensor. A
             scalar applies everywhere; an array of shape `size` sets it per
-            tile, which is how a tile can be dim rather than merely dark. The
-            difference between a dim tile and a dark one is the difference
+            cell, which is how a cell can be dim rather than merely dark. The
+            difference between a dim cell and a dark one is the difference
             between an uncertain reading and no reading at all, and the
             epistemic-value lesson turns on it.
         slip: probability that a move goes somewhere other than intended.
@@ -69,7 +69,7 @@ class GridWorld:
         self.goal = goal
         self.start = start
         self.position = start
-        # Stored per tile so that noise can vary by location. A scalar
+        # Stored per cell so that noise can vary by location. A scalar
         # broadcasts, so the simple worlds read exactly as before.
         self.sensor_noise = np.broadcast_to(
             np.asarray(sensor_noise, dtype=float), size
@@ -77,7 +77,7 @@ class GridWorld:
         self.slip = slip
         self.rng = np.random.default_rng(seed)
 
-        # Every tile lit is the simplest world: the agent always sees where it
+        # Every cell lit is the simplest world: the agent always sees where it
         # is. The epistemic-value lesson switches most of these off, leaving lamps.
         self.lit = np.ones(size, dtype=bool) if lit is None else np.asarray(lit, dtype=bool)
 
@@ -149,7 +149,7 @@ class GridWorld:
     def observe(self, position=None):
         """What the agent sees from `position`, defaulting to where it is.
 
-        Returns a state index on a lit tile, or None in the dark. `None` is
+        Returns a state index on a lit cell, or None in the dark. `None` is
         deliberately not a state index: the agent in the dark receives no
         information about position, rather than receiving a particular
         position it should distrust.
@@ -201,7 +201,7 @@ class GridWorld:
 
 
 def dark_with_lamps(size=(5, 5), lamps=(), **kwargs):
-    """A world where only the tiles in `lamps` reveal the agent's position.
+    """A world where only the cells in `lamps` reveal the agent's position.
 
     This is the epistemic-value configuration. The agent must reach a lamp to
     find out where it is, and the detour is the behaviour the tutorial exists

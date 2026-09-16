@@ -88,9 +88,9 @@ export function observationModel({ rows, cols, sensorNoise }) {
   return A;
 }
 
-// Lamp world: every tile is lit or dark and the agent senses only which.
+// Lamp world: every cell is lit or dark and the agent senses only which.
 // Two observations, DARK=0 and LIT=1, so A[o][s] is 2 by n_states. `lit` is a
-// boolean per tile. Each column is [0.2, 0.8] on a lit tile and [0.9, 0.1] on a
+// boolean per cell. Each column is [0.2, 0.8] on a lit cell and [0.9, 0.1] on a
 // dark one: the false readings are what make a wrong answer possible at all.
 export function lampObservationModel(lit, pLit = 0.8, pDark = 0.9) {
   return [
@@ -219,9 +219,9 @@ async function demo() {
   let col7 = 0;
   for (let o = 0; o < 26; o++) col7 += An[o][7];
   check(approx(col7, 1.0), "observationModel noisy column sums to one");
-  check(approx(An[7][7], 0.7), "observationModel keeps 1 - noise on the true tile");
+  check(approx(An[7][7], 0.7), "observationModel keeps 1 - noise on the true cell");
 
-  // transitionModel: right from tile 0 lands on tile 1; up from tile 0 stays
+  // transitionModel: right from cell 0 lands on cell 1; up from cell 0 stays
   const B = transitionModel({ rows: 5, cols: 5 });
   check(B.length === 25 && B[0].length === 25 && B[0][0].length === 5, "transitionModel shape");
   const RIGHT = 3;
@@ -246,7 +246,7 @@ async function demo() {
       check(approx(colSum, 1.0), `spread B column ${s} action ${a} sums to one`);
     }
   }
-  // Tile 7 is interior: right lands on 8, and 8 keeps only the reliability.
+  // Cell 7 is interior: right lands on 8, and 8 keeps only the reliability.
   check(approx(Bs[8][7][RIGHT], 0.7), "spread B keeps reliability on the intended cell");
   check(Bs[7][7][RIGHT] > 0, "spread B leaves some mass on the origin");
   // The grid wraps, so no move is ever blocked and the origin keeps only its
@@ -282,7 +282,7 @@ async function demo() {
   }
 
   // lampObservationModel: columns are distributions, and a lit reading lifts
-  // every lit tile by the same amount and drops every dark one.
+  // every lit cell by the same amount and drops every dark one.
   const litMask = [true, false, false, true, false];
   const Alamp = lampObservationModel(litMask);
   check(Alamp.length === 2 && Alamp[0].length === 5, "lampObservationModel shape");
@@ -294,12 +294,12 @@ async function demo() {
   // Rows are not distributions: this is the point the lesson turns on.
   check(!approx(Alamp[1].reduce((a, b) => a + b, 0), 1.0), "lampObservationModel rows are not distributions");
 
-  // The lesson's world: 25 tiles, 3 lit, uniform prior, one lit reading.
+  // The lesson's world: 25 cells, 3 lit, uniform prior, one lit reading.
   const lit25 = Array.from({ length: 25 }, (_, s) => s === 0 || s === 9 || s === 18);
   const A25 = lampObservationModel(lit25);
   const post1 = update(uniformBelief(25), A25, 1).posterior;
-  check(approx(post1[0], 0.032 / 0.184, 1e-9), "lamp posterior on a lit tile");
-  check(approx(post1[1], 0.004 / 0.184, 1e-9), "lamp posterior on a dark tile");
+  check(approx(post1[0], 0.032 / 0.184, 1e-9), "lamp posterior on a lit cell");
+  check(approx(post1[1], 0.004 / 0.184, 1e-9), "lamp posterior on a dark cell");
   check(approx(post1.reduce((a, b) => a + b, 0), 1.0), "lamp posterior sums to one");
   // The whole sequence the lesson prints, folded from the uniform prior.
   const expected = [0.1739, 0.2991, 0.2199, 0.3131, 0.2584, 0.3217, 0.3318];

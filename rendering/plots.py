@@ -12,8 +12,8 @@ Colourmaps are perceptually uniform (`viridis`, `cividis`), never `jet`.
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Tile (r, c) covers x in [c, c+1] and y in [r, r+1]. Ticks sit at tile
-# centres, because a tick on a boundary labels the gap between two tiles
+# Cell (r, c) covers x in [c, c+1] and y in [r, r+1]. Ticks sit at cell
+# centres, because a tick on a boundary labels the gap between two cells
 # rather than either of them.
 DARK = "#2a2a35"
 LAMP = "#f2c14e"
@@ -23,7 +23,7 @@ TRAIL = "#8f8fa3"
 
 
 def _grid_axes(rows, cols, title=None, figsize=None):
-    """An axes with tile (r, c) occupying the unit square at (c, r)."""
+    """An axes with cell (r, c) occupying the unit square at (c, r)."""
     figsize = figsize or (0.7 * cols + 1.0, 0.7 * rows + 1.0)
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_xlim(0, cols)
@@ -41,11 +41,11 @@ def _grid_axes(rows, cols, title=None, figsize=None):
     return fig, ax
 
 
-def number_tiles(ax, rows, cols, colour="white", fontsize=7):
-    """Write the state index in the corner of every tile.
+def number_cells(ax, rows, cols, colour="white", fontsize=7):
+    """Write the state index in the corner of every cell.
 
     This is what lets a bar chart over states be read against the grid: the
-    reader traces bar 7 back to the tile labelled 7, so the one-dimensional
+    reader traces bar 7 back to the cell labelled 7, so the one-dimensional
     plot and the two-dimensional world are visibly the same thing.
     """
     for row in range(rows):
@@ -67,7 +67,7 @@ def draw_world(
             Passing this explicitly is how a lesson scrubs through a run.
         trajectory: list of positions to draw as a trail. Pass
             `world.trajectory[:step]` to show the run so far.
-        show_dark: shade unlit tiles. Off for a fully lit world, where the
+        show_dark: shade unlit cells. Off for a fully lit world, where the
             shading would carry no information.
 
     Returns the figure and axes.
@@ -75,7 +75,7 @@ def draw_world(
     position = world.position if position is None else position
     fig, ax = _grid_axes(world.rows, world.cols, title)
 
-    # Unlit tiles first, so everything else sits on top of them.
+    # Unlit cells first, so everything else sits on top of them.
     if show_dark and not world.lit.all():
         for row in range(world.rows):
             for col in range(world.cols):
@@ -86,7 +86,7 @@ def draw_world(
                 )
 
     if trajectory:
-        # Offset to tile centres so the line runs through the squares.
+        # Offset to cell centres so the line runs through the squares.
         xs = [c + 0.5 for _, c in trajectory]
         ys = [r + 0.5 for r, _ in trajectory]
         ax.plot(xs, ys, color=TRAIL, linewidth=2, alpha=0.8, zorder=2)
@@ -104,7 +104,7 @@ def draw_world(
     )
 
     if numbered:
-        number_tiles(ax, world.rows, world.cols, colour="#555560")
+        number_cells(ax, world.rows, world.cols, colour="#555560")
 
     row, col = position
     ax.plot(
@@ -116,11 +116,11 @@ def draw_world(
 
 
 def draw_belief_pair(belief, rows, cols, position=None, title=None, highlight=None):
-    """The same belief twice: over the grid, and as a bar per tile.
+    """The same belief twice: over the grid, and as a bar per cell.
 
     The grid says where the mass is; the bars say how much, and are easier to
-    compare by eye than shades of colour. Tiles are numbered so the two
-    pictures can be read against each other, since bar `n` is the tile
+    compare by eye than shades of colour. Cells are numbered so the two
+    pictures can be read against each other, since bar `n` is the cell
     labelled `n`.
 
     `position` marks where the agent actually is, which is not something the
@@ -149,7 +149,7 @@ def draw_belief_pair(belief, rows, cols, position=None, title=None, highlight=No
     ax_grid.set_xlabel("column")
     ax_grid.set_ylabel("row")
     ax_grid.set_title("belief on the grid")
-    number_tiles(ax_grid, rows, cols)
+    number_cells(ax_grid, rows, cols)
 
     if position is not None:
         row, col = position
@@ -163,7 +163,7 @@ def draw_belief_pair(belief, rows, cols, position=None, title=None, highlight=No
     if highlight is not None:
         colours[highlight] = AGENT
     ax_bars.bar(range(len(belief)), belief, color=colours)
-    ax_bars.set_xlabel("tile number")
+    ax_bars.set_xlabel("cell number")
     ax_bars.set_ylabel("probability")
     ax_bars.set_ylim(0, 1.0)
     ax_bars.set_xticks(range(0, len(belief), max(1, len(belief) // 12)))
@@ -240,7 +240,7 @@ def demo():
     fig, ax = draw_belief(belief, 4, 5, position=(1, 2))
     plt.close(fig)
 
-    # The paired view: grid and bars, with the tiles numbered so the two can
+    # The paired view: grid and bars, with the cells numbered so the two can
     # be read against one another.
     spread = np.full(20, 1.0 / 20)
     fig, (ax_grid, ax_bars) = draw_belief_pair(

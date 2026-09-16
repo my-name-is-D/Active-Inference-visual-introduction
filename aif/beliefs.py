@@ -1,7 +1,7 @@
 """What the agent thinks about where it is, and how that changes.
 
 A belief here is a plain numpy array of length `n_states` that sums to one:
-the agent's probability for each tile. It is never a single position. The
+the agent's probability for each cell. It is never a single position. The
 whole of this module is two operations on that array, and every intermediate
 quantity is returned rather than hidden, so a lesson can plot the parts.
 """

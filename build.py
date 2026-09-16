@@ -22,7 +22,7 @@ SITE_SRC = ROOT / "site-src"
 PAGES = [
     ("lesson-1", CONTENT / "lesson-1.md"),
     ("lesson-2", CONTENT / "lesson-2.md"),
-    ("perception-and-belief", CONTENT / "perception-and-belief.md"),
+    ("lesson-3", CONTENT / "lesson-3.md"),
 ]
 
 
@@ -33,12 +33,12 @@ def _fig_knowing_nothing():
 
     flat = uniform_belief(25)
     fig, _ = draw_belief_pair(
-        flat, 5, 5, title="knowing nothing: every tile equally likely"
+        flat, 5, 5, title="knowing nothing: every cell equally likely"
     )
     return fig
 
 
-def _fig_after_seeing_tile_7():
+def _fig_after_seeing_cell_7():
     sys.path.insert(0, str(ROOT))
     from aif.beliefs import uniform_belief, update
     from aif.generative_model import observation_model
@@ -49,7 +49,7 @@ def _fig_after_seeing_tile_7():
     A = observation_model(world)
     posterior, _, _ = update(uniform_belief(25), A, 7)
     fig, _ = draw_belief_pair(
-        posterior, 5, 5, title="after seeing tile 7 once", highlight=7
+        posterior, 5, 5, title="after seeing cell 7 once", highlight=7
     )
     return fig
 
@@ -70,7 +70,7 @@ def _fig_surprise_curve():
 # <figure src="NAME"> maps to a function returning a matplotlib Figure.
 FIGURES = {
     "knowing-nothing": _fig_knowing_nothing,
-    "after-seeing-tile-7": _fig_after_seeing_tile_7,
+    "after-seeing-cell-7": _fig_after_seeing_cell_7,
     "surprise-curve": _fig_surprise_curve,
 }
 

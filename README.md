@@ -12,15 +12,16 @@ widgets, so the pages load immediately.
 
 ## Status
 
-Work package 0 (the deployment pipeline) and the first lesson,
-`content/perception-and-belief.md`, are done. The remaining lessons are listed
-on the landing page.
+Work package 0 (the deployment pipeline) and the first three lessons,
+`content/lesson-1.md` through `content/lesson-3.md`, are done. The remaining
+lessons are listed on the landing page.
 
 ## Running locally
 
 ```sh
-$EDITOR content/perception-and-belief.md   # edit a lesson
-$EDITOR site-src/widgets.js                # edit the interactive widgets
+$EDITOR content/lesson-3.md                # edit a lesson
+$EDITOR site-src/lesson-3.js               # edit that lesson's widgets
+$EDITOR site-src/widget.js                 # edit the shared widget layer
 ./build.sh site                            # build the static site
 python3 -m http.server --directory site
 ```

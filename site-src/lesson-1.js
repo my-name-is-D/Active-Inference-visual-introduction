@@ -33,7 +33,7 @@ import {
 import { uniformBelief, update } from "./aif.js";
 
 // --- legend ----------------------------------------------------------------
-// Figure: the lamp/lit-vs-dark tile legend (content/lesson-1.md, before "the
+// Figure: the lamp/lit-vs-dark cell legend (content/lesson-1.md, before "the
 // map is what makes the readings interpretable at all").
 mount("legend", (el) => {
   const CANVAS_W = 480;
@@ -80,8 +80,8 @@ mount("legend", (el) => {
 // Figure: hidden state vs the agent's belief, side by side (content/lesson-1.md,
 // the "gap between them" section).
 // Left: the world, one hidden state, the agent on it. Right: what the world
-// would show, a bump per tile at p(lit | s). Several tiles carry the same
-// bump, which is exactly why a lit reading cannot name one tile.
+// would show, a bump per cell at p(lit | s). Several cells carry the same
+// bump, which is exactly why a lit reading cannot name one cell.
 mount("state-vs-belief", (el) => {
   const CANVAS_W = 700;
   const CANVAS_H = 320;
@@ -102,23 +102,23 @@ mount("state-vs-belief", (el) => {
   drawIsoPlane(ctx, LEFT_X, LEFT_Y, PLANE_CELL, { agent: AGENT_TILE });
   drawIsoPlane(ctx, RIGHT_X, RIGHT_Y, PLANE_CELL, { heights: A_LAMP[LIT] });
   label(ctx, "the world: one hidden state", LEFT_LABEL_X, TITLE_Y, COLOUR.ink);
-  label(ctx, "the agent is on one of these tiles", LEFT_LABEL_X, SUBTITLE_Y);
-  label(ctx, "what it would show: p(lit | tile)", RIGHT_LABEL_X, TITLE_Y, COLOUR.ink);
-  label(ctx, "tall on every lit tile, low on every dark one", RIGHT_LABEL_X, SUBTITLE_Y);
-  label(ctx, "three tiles share the tall bump: a lit reading fits all three", LEFT_LABEL_X, CAPTION_Y, COLOUR.ink);
+  label(ctx, "the agent is on one of these cells", LEFT_LABEL_X, SUBTITLE_Y);
+  label(ctx, "what it would show: p(lit | cell)", RIGHT_LABEL_X, TITLE_Y, COLOUR.ink);
+  label(ctx, "tall on every lit cell, low on every dark one", RIGHT_LABEL_X, SUBTITLE_Y);
+  label(ctx, "three cells share the tall bump: a lit reading fits all three", LEFT_LABEL_X, CAPTION_Y, COLOUR.ink);
 });
 
 // --- commit-vs-distribute --------------------------------------------------
-// Figure: cost of committing to one tile vs keeping a distribution
+// Figure: cost of committing to one cell vs keeping a distribution
 // (content/lesson-1.md, "This is what committing fully to one answer costs.").
 // The lesson's argument, stacked on one stepper. The agent never moves: it
-// sits on tile 10 for the whole demo, exactly like every other widget on this
+// sits on cell 10 for the whole demo, exactly like every other widget on this
 // page. The two panels differ only in what they DO with that fixed position.
-// The top one commits to "I am on tile 10" the moment the first lit reading
-// arrives, and holds that as a certainty (probability 1 on tile 10, 0
+// The top one commits to "I am on cell 10" the moment the first lit reading
+// arrives, and holds that as a certainty (probability 1 on cell 10, 0
 // everywhere else) until a reading it cannot explain forces it to give the
 // whole thing up and start from nothing. The bottom one keeps the ordinary
-// posterior. Same readings, same true tile, two different objects held.
+// posterior. Same readings, same true cell, two different objects held.
 mount("commit-vs-distribute", (el) => {
   const controls = document.createElement("div");
   controls.style.margin = "0 0 0.75rem";
@@ -139,11 +139,11 @@ mount("commit-vs-distribute", (el) => {
   const beliefs = lampBeliefs();
 
   // The committing agent, replayed from the start. It commits to its own
-  // tile (10) on the first lit reading and holds that as certain; a dark
+  // cell (10) on the first lit reading and holds that as certain; a dark
   // reading contradicts it, so it discards everything and starts over, with
   // no memory of having been right before.
   function committed(step) {
-    let held = false; // true once committed to tile 10
+    let held = false; // true once committed to cell 10
     let restarts = 0;
     let justCommitted = false;
     for (let i = 0; i < step; i++) {
@@ -155,7 +155,7 @@ mount("commit-vs-distribute", (el) => {
           justCommitted = true;
         }
       } else if (o === DARK) {
-        held = false; // tile 10 is lit, so a dark reading cannot be it
+        held = false; // cell 10 is lit, so a dark reading cannot be it
         restarts += 1;
       }
     }
@@ -178,15 +178,15 @@ mount("commit-vs-distribute", (el) => {
       ctx.strokeRect(196.5, 6.5, 13, 11);
     }
 
-    // --- The tile itself: real position, never moves ------------------
+    // --- The cell itself: real position, never moves ------------------
     const { held, restarts, justCommitted } = committed(step);
     const gridTitleY = 46;
-    label(ctx, "the tile the agent is on", 16, gridTitleY, COLOUR.ink);
+    label(ctx, "the cell the agent is on", 16, gridTitleY, COLOUR.ink);
     const gridY = gridTitleY + 14;
-    // The agent is always on tile 10, never anywhere else: the red circle is
+    // The agent is always on cell 10, never anywhere else: the red circle is
     // fixed there for the whole demo, on from the very first frame. What the
     // cell SHOWS (lit or dark) follows the reading, because that is what a
-    // false reading is: the true tile does not change, only what it reports.
+    // false reading is: the true cell does not change, only what it reports.
     drawGrid(ctx, 16, gridY, GRID_CELL, {
       agent: AGENT_TILE,
       observed: o,
@@ -202,7 +202,7 @@ mount("commit-vs-distribute", (el) => {
     ctx.textAlign = "left";
 
     // --- Top distribution: commit to one answer ------------------------
-    // The committed belief AS a distribution: probability 1 on tile 10 once
+    // The committed belief AS a distribution: probability 1 on cell 10 once
     // held, uniform before the first commitment and again after every
     // contradiction (an agent starting over truly knows nothing, same as at
     // the very start), never a hybrid of the two.
@@ -216,10 +216,10 @@ mount("commit-vs-distribute", (el) => {
     // committed belief is doing, not a property of the grid above.
     const expY = barTitleY + 14 + BAR_H + 24;
     if (held) {
-      label(ctx, `"I am on tile ${AGENT_TILE}."`, 16, expY, COLOUR.ink);
+      label(ctx, `"I am on cell ${AGENT_TILE}."`, 16, expY, COLOUR.ink);
       if (justCommitted) {
         label(ctx, "The reading says lit, so it commits fully:", 16, expY + 20);
-        label(ctx, `certain it is on tile ${AGENT_TILE}, nothing else possible.`, 16, expY + 36);
+        label(ctx, `certain it is on cell ${AGENT_TILE}, nothing else possible.`, 16, expY + 36);
       } else {
         label(ctx, "Still held from before: no new lit reading has", 16, expY + 20);
         label(ctx, "arrived to re-confirm it, but nothing challenged it either.", 16, expY + 36);
@@ -228,7 +228,7 @@ mount("commit-vs-distribute", (el) => {
       label(ctx, "nothing committed yet", 16, expY);
     } else {
       label(ctx, "contradicted: start again", 16, expY, COLOUR.agent);
-      label(ctx, `Tile ${AGENT_TILE} is lit, so a dark reading cannot`, 16, expY + 20);
+      label(ctx, `Cell ${AGENT_TILE} is lit, so a dark reading cannot`, 16, expY + 20);
       label(ctx, "come from it. The commitment is thrown away.", 16, expY + 36);
     }
     if (restarts > 0) {
@@ -242,13 +242,13 @@ mount("commit-vs-distribute", (el) => {
     label(ctx, "When we keep uncertainty over our position:", 16, botY, COLOUR.ink);
     drawBeliefBar(ctx, 16, botY + 14, W - 32, b);
     const noteY = botY + 14 + BAR_H + 24;
-    label(ctx, `p(each lit tile) = ${b[LIT_TILES[0]].toFixed(3)}   (all 25 cells sum to ${b.reduce((x, y) => x + y, 0).toFixed(2)})`, 16, noteY, COLOUR.ink);
+    label(ctx, `p(each lit cell) = ${b[LIT_TILES[0]].toFixed(3)}   (all 25 cells sum to ${b.reduce((x, y) => x + y, 0).toFixed(2)})`, 16, noteY, COLOUR.ink);
     if (o === DARK) {
       label(ctx, "Dipped by the dark reading, not destroyed: the ranking survives.", 16, noteY + 20, COLOUR.agent);
     } else if (step > 0) {
-      label(ctx, "The lit tiles are still ranked against each other.", 16, noteY + 20);
+      label(ctx, "The lit cells are still ranked against each other.", 16, noteY + 20);
     } else {
-      label(ctx, "Every tile is equally likely.", 16, noteY + 20);
+      label(ctx, "Every cell is equally likely.", 16, noteY + 20);
     }
   }
 
@@ -338,9 +338,9 @@ mount("belief-bars", (el) => {
     // drawn by the same code, in the same slot, on the same ruler: pressing a
     // button adds rows below it and never moves the row already on screen.
     const shown = last ? last.prior : prior;
-    const darkTile = LIT_MASK.findIndex((l) => !l);
+    const darkCell = LIT_MASK.findIndex((l) => !l);
     // prior, unnormalised, and posterior are all real distributions over the
-    // same tiles, so they share one scale: that is what makes the dip below
+    // same cells, so they share one scale: that is what makes the dip below
     // one and the snap back to one visible as an actual height change,
     // instead of needing a caption to say so. With no observation yet, the
     // ruler is what one lit reading would stretch the peak to, so the flat
@@ -360,11 +360,11 @@ mount("belief-bars", (el) => {
         // row is [0.8 lit, 0.1 dark] and the dark row [0.2 lit, 0.9 dark], and
         // a hardcoded pair silently mislabels one of the two observations.
         // This row alone is drawn against 0..1: it is a likelihood, not a
-        // distribution over tiles, so it shares no mass with the other three.
+        // distribution over cells, so it shares no mass with the other three.
         // Saying so stops the reader reading equal bar heights as equal values.
         ["o  likelihood", likelihood, 1, oc, [
           `row A[${obsName(obs)}]: ${A_LAMP[obs][LIT_TILES[0]].toFixed(2)} on lit, ` +
-          `${A_LAMP[obs][darkTile].toFixed(2)} on dark`,
+          `${A_LAMP[obs][darkCell].toFixed(2)} on dark`,
         ]],
         ["=  unnormalised", unnormalised, distScale, neutral, [`total ${evidence.toFixed(3)}`]],
         ["posterior", posterior, distScale, neutral, ["total 1.000"]],
@@ -379,7 +379,7 @@ mount("belief-bars", (el) => {
 
     if (!last) {
       label(ctx, "press a button to observe. The agent does not move,", 8, 130, COLOUR.ink);
-      label(ctx, "every reading comes from the same tile.", 8, 148, COLOUR.ink);
+      label(ctx, "every reading comes from the same cell.", 8, 148, COLOUR.ink);
       readout.textContent = "";
       return;
     }
@@ -387,10 +387,10 @@ mount("belief-bars", (el) => {
     const { likelihood, unnormalised, posterior, evidence } = last;
     const s = hover === null ? LIT_TILES[0] : hover;
     readout.textContent =
-      `tile ${s} (${LIT_MASK[s] ? "lit" : "dark"}): ` +
+      `cell ${s} (${LIT_MASK[s] ? "lit" : "dark"}): ` +
       `${shown[s].toFixed(4)} x ${likelihood[s].toFixed(2)} = ${unnormalised[s].toFixed(4)}, ` +
       `then / ${evidence.toFixed(4)} = ${posterior[s].toFixed(4)}. ` +
-      (hover === null ? "Hover a bar to follow another tile." : "");
+      (hover === null ? "Hover a bar to follow another cell." : "");
   }
 
   function observe(o) {
@@ -450,11 +450,11 @@ mount("a-columns", (el) => {
 
   function step(i, done = false) {
     ctx.clearRect(0, 0, W, H);
-    label(ctx, "the grid, with every tile's index", GRID_X, GRID_Y - 12, COLOUR.ink, 20);
+    label(ctx, "the grid, with every cell's index", GRID_X, GRID_Y - 12, COLOUR.ink, 20);
     drawGrid(ctx, GRID_X, GRID_Y, GRID_CELL, { mark: done ? null : i, showIds: true });
 
     const matrixTop = GRID_Y + 5 * GRID_CELL + 66;
-    label(ctx, "A: what the world would show, one column per tile", 16, matrixTop - 40, COLOUR.ink,20);
+    label(ctx, "A: what the world would show, one column per cell", 16, matrixTop - 40, COLOUR.ink,20);
     drawMatrix(ctx, { markCol: done ? null : i, x: MX, y: matrixTop });
 
     // The per-column readout stays on screen whether or not the sweep is
@@ -465,9 +465,9 @@ mount("a-columns", (el) => {
     const isLit = LIT_MASK[col];
     const ty = matrixTop + 2 * MCELL + 56;
     const RSIZE = 22;
-    label(ctx, `column ${col}: a ${isLit ? "lit" : "dark"} tile`, 16, ty, COLOUR.ink, RSIZE);
-    label(ctx, `p(dark | tile ${col}) = ${A_LAMP[DARK][col].toFixed(2)}`, 16, ty + 34, COLOUR.ink, RSIZE);
-    label(ctx, `p(lit  | tile ${col}) = ${A_LAMP[LIT][col].toFixed(2)}`, 16, ty + 64, COLOUR.ink, RSIZE);
+    label(ctx, `column ${col}: a ${isLit ? "lit" : "dark"} cell`, 16, ty, COLOUR.ink, RSIZE);
+    label(ctx, `p(dark | cell ${col}) = ${A_LAMP[DARK][col].toFixed(2)}`, 16, ty + 34, COLOUR.ink, RSIZE);
+    label(ctx, `p(lit  | cell ${col}) = ${A_LAMP[LIT][col].toFixed(2)}`, 16, ty + 64, COLOUR.ink, RSIZE);
     label(ctx, "dark + lit, every column, always one", 16, ty + 100, COLOUR.ink, RSIZE);
 
     if (done) {
@@ -501,7 +501,7 @@ mount("a-rows", (el) => {
     const ty = matrixTop + 2 * MCELL + 56;
     const running = A_LAMP[LIT].slice(0, i + 1).reduce((a, b) => a + b, 0);
     if (!done) {
-      label(ctx, `added tile ${i}: ${A_LAMP[LIT][i].toFixed(2)}`, 16, ty, COLOUR.ink, RSIZE);
+      label(ctx, `added cell ${i}: ${A_LAMP[LIT][i].toFixed(2)}`, 16, ty, COLOUR.ink, RSIZE);
       label(ctx, `running total ${running.toFixed(1)}`, 16, ty + 32, running > 1 ? COLOUR.agent : COLOUR.ink, RSIZE);
       // The total as a bar, with the one mark it sails past.
       const sx = 16;
@@ -523,7 +523,7 @@ mount("a-rows", (el) => {
       label(ctx, `the lit row adds to ${A_LAMP[LIT].reduce((a, b) => a + b, 0).toFixed(1)}`, 16, ty, COLOUR.ink, RSIZE);
       label(ctx, `the dark row adds to ${A_LAMP[DARK].reduce((a, b) => a + b, 0).toFixed(1)}`, 16, ty + 32, COLOUR.ink, RSIZE);
       label(ctx, "neither is one, and nothing requires them to be:", 16, ty + 68, COLOUR.ink, RSIZE);
-      label(ctx, "a row is a score per tile, answering separate questions about separate tiles", 16, ty + 96, COLOUR.dim, RSIZE);
+      label(ctx, "a row is a score per cell, answering separate questions about separate cells", 16, ty + 96, COLOUR.dim, RSIZE);
     }
   }
   autoplay(el, step, N, 240);
@@ -532,7 +532,7 @@ mount("a-rows", (el) => {
 // --- sequence-stepper ------------------------------------------------------
 // Figure: belief converging over a sequence of observations (content/lesson-1.md,
 // the payoff section ending "the agent is most of the way to it.").
-// The payoff. The agent stands still on a lit tile for seven readings, two of
+// The payoff. The agent stands still on a lit cell for seven readings, two of
 // which are false, and the belief is folded over the fixed sequence so that
 // stepping backwards shows exactly the same numbers.
 mount("sequence-stepper", (el) => {
@@ -565,9 +565,9 @@ mount("sequence-stepper", (el) => {
     const o = step === 0 ? null : SEQUENCE[step - 1];
     const b = beliefs[step];
 
-    // The world's layout is fixed: which tiles are lit never changes, so only
-    // the agent's own tile recolours with the reading (via `observed`). Every
-    // other tile holding still is what makes the false readings legible as
+    // The world's layout is fixed: which cells are lit never changes, so only
+    // the agent's own cell recolours with the reading (via `observed`). Every
+    // other cell holding still is what makes the false readings legible as
     // the sensor being wrong rather than the world changing.
     drawIsoPlane(ctx, LEFT_X, LEFT_Y, PLANE_CELL, {
       agent: AGENT_TILE,
@@ -579,10 +579,10 @@ mount("sequence-stepper", (el) => {
     label(ctx, "the world", 60, 22, COLOUR.ink);
     label(ctx, "the agent has not moved", 60, 40);
     label(ctx, "the belief", 400, 22, COLOUR.ink);
-    label(ctx, "bump height is the probability of that tile", 400, 40);
+    label(ctx, "bump height is the probability of that cell", 400, 40);
 
     if (o === null) {
-      label(ctx, "no readings yet: every tile equally likely", 16, 330, COLOUR.ink);
+      label(ctx, "no readings yet: every cell equally likely", 16, 330, COLOUR.ink);
     } else {
       ctx.fillStyle = obsColour(o);
       ctx.fillRect(16, 320, 14, 12);
@@ -592,15 +592,15 @@ mount("sequence-stepper", (el) => {
       label(
         ctx,
         `reading ${step} of ${SEQUENCE.length}: ${obsName(o)}` +
-          (o === truth ? "" : "   (a false reading: the tile is lit)"),
+          (o === truth ? "" : "   (a false reading: the cell is lit)"),
         38,
         330,
         o === truth ? COLOUR.ink : COLOUR.agent,
       );
     }
-    const darkTile = LIT_MASK.findIndex((l) => !l);
-    label(ctx, `p(each lit tile) = ${b[LIT_TILES[0]].toFixed(3)}`, 400, 330, COLOUR.ink);
-    label(ctx, `p(each dark tile) = ${b[darkTile].toFixed(4)}`, 400, 348);
+    const darkCell = LIT_MASK.findIndex((l) => !l);
+    label(ctx, `p(each lit cell) = ${b[LIT_TILES[0]].toFixed(3)}`, 400, 330, COLOUR.ink);
+    label(ctx, `p(each dark cell) = ${b[darkCell].toFixed(4)}`, 400, 348);
     label(ctx, `total ${b.reduce((x, y) => x + y, 0).toFixed(2)}`, 16, 348);
   }
 

@@ -1,10 +1,9 @@
-# Title 
+# Lesson 3. Free energy
 ## The step that gets expensive
 
 Go back to the update the agent performs when an observation arrives. It multiplies the belief it held beforehand by the likelihood read from *A*, and then divides by the total:
 
-$$p(s \mid o) = \frac{p(o \mid s) \, p(s)}{p(o)}$$
-//equation 1 (to be numeroted)//
+$$p(s \mid o) = \frac{p(o \mid s) \, p(s)}{p(o)} \tag{1}$$
 
 Throughout this section $s$ is the cell the agent is in now, the one it is trying to infer given the observation that has just arrived. No transition is involved and no next state appears: the prediction step has already happened, and $p(s)$ is what it produced.
 
@@ -41,7 +40,9 @@ Two consequences follow from $q$ being a free object rather than a derived one.
 
 The first is that the agent can hold a belief it knows to be imperfect. Until now, whatever the agent held was by construction the correct consequence of everything it had seen. There was no notion of a belief being approximately right, because there was nothing to be approximately right relative to. With $q$ and a score, there is: $q$ can be near the posterior or far from it, and the agent can know which.
 
-The second is that the agent's task changes shape. Computing the posterior was arithmetic, with one answer and one route to it. Finding a good $q$ is a search, over the set of all distributions the agent could propose, looking for the one that scores best. That set has a name from the earlier section: it is the probability simplex, the set of all lists of probabilities that sum to one. Every valid belief is somewhere in it. The posterior is one point in that set, and the agent is looking for it without being able to see where it is.
+The second is that the agent's task changes shape. Computing the posterior was arithmetic, with one answer and one route to it. Finding a good $q$ is a search, over the set of all distributions the agent could propose, looking for the one that scores best. That set has a name: it is the **probability simplex**, the set of all lists of probabilities that sum to one. Every valid belief is somewhere in it. The posterior is one point in that set, and the agent is looking for it without being able to see where it is.
+
+<widget id="q-lives-in-the-simplex"></widget>
 
 So the object this section is built on is a belief the agent adopts provisionally, which it can change at will, and which is judged rather than derived. What remains is to say how it is judged.
 
@@ -53,37 +54,38 @@ Consider what such a measure has to do. Take one cell. The approximate posterior
 
 The ratio is the natural thing to look at:
 
-$$\frac{q(s)}{p(s \mid o)}$$
-//equation 2 (to be numeroted)//
+$$\frac{q(s)}{p(s \mid o)} \tag{2}$$
 
 
 The ratio ranks disagreements correctly: the further it sits from one, the more the two distributions differ about that cell. What it gets wrong is the case of no disagreement at all. These per-cell values are going to be added up across the grid, so a cell $q$ is right about has to contribute nothing to the total. The ratio contributes one instead, and a $q$ that was perfect everywhere would total the number of cells rather than zero.
 
 The logarithm fixes exactly that, since $\log 1 = 0$.
 
-$$\log \frac{q(s)}{p(s \mid o)}$$
-//equation 3 (to be numeroted)//
+$$\log \frac{q(s)}{p(s \mid o)} \tag{3}$$
 
 
 Now agreement returns zero, a $q$ that is too confident returns a positive number, and one that is not confident enough returns a negative number.
 
 That is one cell. To get a single number for the whole distribution, the contributions have to be combined, and they cannot simply be added, because a cell $q$ considers irrelevant should not count as much as one it is staking everything on. So weight each cell's contribution by the probability $q$ assigns to it, which is an expectation under $q$:
 
-$$D_{\mathrm{KL}}\!\left[q(s) \,\|\, p(s \mid o)\right] = \mathbb{E}_{q(s)}\!\left[\log \frac{q(s)}{p(s \mid o)}\right] = \sum_s q(s) \log \frac{q(s)}{p(s \mid o)}$$
-//equation 4 (to be numeroted)//
+$$D_{\mathrm{KL}}\!\left[q(s) \,\|\, p(s \mid o)\right] = \mathbb{E}_{q(s)}\!\left[\log \frac{q(s)}{p(s \mid o)}\right] = \sum_s q(s) \log \frac{q(s)}{p(s \mid o)} \tag{4}$$
 
 
 This is the **Kullback-Leibler divergence** from $q$ to $p(s \mid o)$, written $D_{\mathrm{KL}}$ and usually just called the KL divergence. It is the same operation as the prediction step: a value for every state, a weight for every state, multiply and add. The value being averaged is now a log ratio rather than a transition probability.
 
 Three properties, and the third is the one that catches people out.
 
-It is never negative. That is not obvious, since a cell contributes a negative term whenever $q$ is less confident about it than the posterior is. What prevents those terms from dominating is where the weights come from. A large negative contribution requires $q$ to be much smaller there than the posterior, and $q$ being small there is exactly what makes the weight on that cell small. The negative terms are systematically underweighted, and the floor is zero, reached only when the two distributions match everywhere. The formal statement of this is Jensen's inequality.
+This divergence measure has three essential properties. 
+- It is never negative, though this is not obvious: a cell contributes a negative term whenever q is less confident than the posterior, but the weights systematically underweight these terms, with the floor at zero reached only when both distributions match everywhere (Gibbs' inequality, proved via Jensen's inequality on the logarithm's concavity). 
+- It equals zero only when the two distributions are identical, and approaches zero as they converge. 
+- It is not symmetric: D $D_{\mathrm{KL}}[q \| p]$ and $D_{\mathrm{KL}}[p \| q]$ are different, since the weights 
+depend on which distribution is written first. This makes it a measure of 
+discrepancy rather than a distance; the order in the brackets cannot be 
+reversed without changing the value.
 
-//FIGURE: demonstrate numerically that KL divergence is never negative, for a reader who has just been told this and has no reason to believe it. Context: small grid world, discrete states (cells), agent holds an approximate posterior q over cells and there is a true posterior p(s|o) computed exactly by Bayes. Show a table or plot over several hand-chosen q: flat, peaked on the correct cell, peaked on a wrong cell, moderately wrong, and the exact posterior itself. For each, report the per-cell terms q(s)*log(q(s)/p(s|o)) so the reader can see that some are negative, and then the total, so they can see the total is never below zero. The exact posterior must give exactly zero. Aim to make visible that negative per-cell terms exist but never win. Random distributions could also be sampled to reinforce that no choice produces a negative total.//
 
-It is zero only when the two distributions are identical, and the closest they are, the lower the value.
+<widget id="kl-never-negative"></widget>
 
-It is not symmetric. $D_{\mathrm{KL}}[q \| p]$ and $D_{\mathrm{KL}}[p \| q]$ are different numbers, because the weights come from whichever distribution is written first. So this is a measure of discrepancy rather than a distance in the ordinary sense: the distance from London to Paris does not depend on which end you start from, and this does. The order in the brackets is part of the definition and cannot be reversed for convenience.
 
 ## Why that gap cannot be measured directly
 
@@ -174,35 +176,29 @@ Two ways to watch this, and they show different things.
 ### Compare situations over one step
 Fix the starting point first, since $F$ depends on it. The agent arrives at this moment holding a prior: the belief produced by its last prediction step, spread over a few neighbouring cells rather than concentrated on one. That prior is the same for all five approximate posteriors below, as is the observation. Only $q$ changes from one to the next.
 
-//show a prior that is already somewhat informed (not fully flat)//
-
 Choose a handful of possible situations the agent might be in, and compute $F$ for each of them, using the same observation throughout.
 
 **The agent has no idea where it is.** Every cell equally plausible. This is what it holds before any evidence arrives.
 
-////- flat: 0.2, 0.2, 0.2, 0.2, 0.2. ... The agent claims to have no idea where it is.//
-**The agent is confident and correct.** Most of its probability on the cell the observation actually supports.
-//- peaked on the right cell: 0.05, 0.05, 0.8, 0.05, 0.05. Confident, and confident about the cell the evidence supports.//
+**The agent is confident and correct.** Most of its probability on the cell the evidence best supports, once the prior is taken into account. Two cells are lit, so the reading alone does not separate them; what breaks the tie is that the agent already thought one of them more likely.
 
-**The agent is confident and wrong.** Just as concentrated, but on a different cell. The kind of state reached after a misread sensor, holding on to a cell the evidence does not support.
+**The agent is confident and wrong.** Just as concentrated, but on a dark cell, one the reading argues against. The kind of state reached after a misread sensor, holding on to a cell the evidence does not support.
 
-//- peaked on the wrong cell: 0.05, 0.8, 0.05, 0.05, 0.05. Equally confident, about the wrong cell.//
 
 **The agent is leaning the right way without committing.** The correct cell favoured, the others still in contention.
 
-//- partly right: 0.1, 0.2, 0.4, 0.2, 0.1. Leaning towards cell three without committing to it.//
 
 And a fifth for comparison: the exact posterior for this observation, obtained by multiplying the prior by the likelihood cell by cell and dividing by the total across every cell, which in a grid this size is still possible.
 
-//exact posterior shown (obtained thanks to A set in lesson 1 and prior, show the multiplication happens) --> HOW to show it exactly to define // 
 
 $F$ is computed the same way in every case: take the approximate posterior, take the prior the agent held, read the column of *A* for the observation received, and evaluate
 
 $$F = \mathbb{E}_{q(s)}\!\left[\log \frac{q(s)}{p(o \mid s)\,p(s)}\right]$$
 
-Nothing is being optimised. Five approximate posteriors are being scored, and the five numbers are then compared.
+Nothing is being optimised. Five approximate posteriors are being scored, and the five numbers are then compared. Hovering a row shows the sum it came from, term by term.
 
-//WHAT TO SHOW: the five values of F laid out for direct comparison, with each q shown as a distribution over the grid beside its score. Two things must be readable. First, whether the exact posterior has the lowest F of the five. Second, whether the ordering of the other four tracks how far each sits from that posterior. Report what the numbers actually give rather than arranging them to produce a tidy ordering. Worth showing the KL divergence from each q to the posterior alongside its F, so the reader can see the two columns differ by the same fixed amount in every row, that amount being the log evidence term which cancels out of every comparison.//
+<widget id="score-five-q"></widget>
+
 
 One thing is guaranteed: the exact posterior has the lowest $F$ of the set, since it is the only one at which the divergence is zero. Compare the four other scores against the distributions that produced them and see what the ordering actually is.
 
@@ -210,18 +206,11 @@ One thing is guaranteed: the exact posterior has the lowest $F$ of the set, sinc
 
 The second shows the claim being used rather than verified. Start from a $q$ that is plainly wrong and let an optimiser adjust it step by step, each adjustment making $F$ smaller. That is **descending** on $F$, or gradient descent: the optimiser cannot see where the lowest point is, only which direction is downhill from where it stands.
 
-//- peaked on the wrong cell: 0.05, 0.8, 0.05, 0.05, 0.05. (over 25 cells) confident about the wrong cell.
-show prior as defined above 
+<widget id="descend-on-f"></widget>
 
-let the user click on next step (preset path), show the multiplication, 
-show the model psoetrior update and become the next prior etc
-Check calculation 
-To define what to show exactly (plan on 3D plane of the agent moving on left and belief on right with distribution $q$ under this image, evolving step by step )
-number origin and calculation should be clear 
+Watch two things together: the shape of $q$ changing, and $F$ falling. $q$ moves towards the posterior, drawn as a dashed outline, and stops on it. The optimiser was never told what that outline is; it was only ever given $F$ to reduce.
 
-//
-
-Watch two traces together: the value of $F$ falling, and the shape of $q$ changing. $F$ decreases and levels off. $q$ moves towards the posterior and stops there. The optimiser was never told what the posterior is; it was only ever given $F$ to reduce.
+The fall is steep and then slow, which is why the panel plots how far $F$ still sits above its floor rather than $F$ itself, on a logarithmic scale. On a plain scale the whole descent happens in the first few steps and the rest is a flat line. That floor is $-\log p(o)$, the quantity the previous section drove out of the comparison: the agent cannot evaluate it, and the figure prints it only so the axis means something to the reader.
 
 
 ## End note

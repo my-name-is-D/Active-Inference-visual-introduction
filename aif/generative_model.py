@@ -38,8 +38,8 @@ def check_columns_sum_to_one(array, name, tolerance=1e-10):
 def observation_model(world):
     """Build `A` for a gridworld.
 
-    On a lit tile the agent sees its own position, with `sensor_noise` of the
-    probability spread over the tiles it could be confused with. Unlit tiles
+    On a lit cell the agent sees its own position, with `sensor_noise` of the
+    probability spread over the cells it could be confused with. Unlit cells
     all produce the same observation, the last index, which carries no
     information about position: that single shared "dark" outcome is what
     makes the dark world hard.
@@ -63,7 +63,7 @@ def observation_model(world):
             if landing != position:
                 neighbours.append(world.state_index(landing))
 
-        # Noise is per tile: a tile can be dim rather than merely lit or dark.
+        # Noise is per cell: a cell can be dim rather than merely lit or dark.
         noise = float(world.sensor_noise[position])
         if neighbours and noise > 0.0:
             A[state, state] = 1.0 - noise
@@ -145,8 +145,8 @@ def demo():
     # Deterministic movement: one destination per (state, action).
     assert B.shape == (9, 9, 5)
     assert np.allclose(B.sum(axis=0), 1.0)
-    assert B[1, 0, 3] == 1.0     # right from tile 0 lands on tile 1
-    assert B[6, 0, 0] == 1.0     # up from tile 0 wraps to the bottom row
+    assert B[1, 0, 3] == 1.0     # right from cell 0 lands on cell 1
+    assert B[6, 0, 0] == 1.0     # up from cell 0 wraps to the bottom row
 
     # B is doubly stochastic: columns sum to one because the agent ends up
     # somewhere, and ROWS sum to one because the grid wraps, so every cell is
@@ -155,14 +155,14 @@ def demo():
     # claim lesson 2 makes when it says predicting can only ever widen one.
     assert np.allclose(B.sum(axis=1), 1.0)
 
-    # Every dark tile produces the same observation, so seeing it tells the
-    # agent nothing about which tile it is on.
+    # Every dark cell produces the same observation, so seeing it tells the
+    # agent nothing about which cell it is on.
     dark = dark_with_lamps(size=(3, 3), lamps=[(1, 1)], goal=(2, 2))
     A_dark = observation_model(dark)
     dark_index = dark.n_states
     dark_columns = [s for s in range(dark.n_states) if A_dark[dark_index, s] == 1.0]
     assert len(dark_columns) == 8
-    assert A_dark[4, 4] == 1.0   # the lit tile still reports itself
+    assert A_dark[4, 4] == 1.0   # the lit cell still reports itself
 
     # A noisy sensor keeps its columns proper distributions.
     noisy = GridWorld(size=(3, 3), sensor_noise=0.3)
