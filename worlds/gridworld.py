@@ -48,7 +48,8 @@ class GridWorld:
             difference between a dim cell and a dark one is the difference
             between an uncertain reading and no reading at all, and the
             epistemic-value lesson turns on it.
-        slip: probability that a move goes somewhere other than intended.
+        slip: probability of sampling the slip-destination list, which can
+            include the intended destination (notably under stay).
             0 means deterministic movement. Used from the novelty lesson on.
         seed: seeds the world's own generator, so a lesson that quotes a
             number in prose gets the same number every time it runs.
@@ -130,9 +131,10 @@ class GridWorld:
         actually look like, and it is the model lesson 2 describes.
 
         Returns a list of positions, possibly with repeats where the
-        candidates coincide: under `stay` the intended cell IS the origin, so
-        the origin appears twice. The caller shares the mass out over the list
-        as it stands, so a repeated cell correctly collects more than one
+        candidates coincide: for a moving action, the origin is also one
+        neighbour of the target and appears twice. Under `stay`, the origin
+        and its four neighbours are distinct on the 5x5 grid. The caller shares
+        the mass out over the list as it stands, so a repeated cell collects more than one
         share.
 
         The grid wraps, so every cell has exactly four neighbours and this

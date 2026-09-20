@@ -14,7 +14,7 @@ Fetch me a fork from a kitchen you have never been in. Same task, but you no lon
 
 Now walk into that kitchen needing nothing. You will still open a few cupboards, and you will first skip the ones you can already guess: the glass-fronted cabinet, the one under the sink. What draws you is the drawer you cannot predict what they contain. Exploration on its own, with nothing but information being sought.
 
-In this page, the agent is given only what it is after. No instruction to explore, no exploration bonus. Those will come later.
+In this page, the agent is given only what it is after. No instruction to explore, no exploration bonus. 
 
 ## What the agent is after
 
@@ -28,15 +28,17 @@ One entry per observation, and the entries sum to one. The larger the entry, the
 
 Because the entries sum to one, they compete. The agent cannot care more about one observation without caring less about the others, in exactly the way a belief cannot become more confident everywhere at once.
 
-//FIGURE 1: C shown as a distribution over the observation set, beside the grid. Static, nothing moves. Alongside it, a reward vector over cells, so the reader sees the two objects are different shapes: one indexed by observation, one by state. Label which is which. This figure exists to make the difference visible rather than asserted. If cheap, add a third panel showing preferences over states, the variant named below, so the reader can see all three object shapes at once.//
+<widget id="c-not-reward"></widget>
 
 That competition is the first thing separating $C$ from reward, and the second is what it is indexed by.
 
-A reward is a real number attached to a state. For instance, reaching the goal cell is worth ten, every other cell is worth nothing, and nothing constrains those numbers: one can be a hundred times another, they need not sum to anything, and they can be negative. The quantity says how good it is to be somewhere. This reward comes from the environment: in reinforcement learning the agent discovers it by acting and cannot change it.
+For comparison, take a simple reward vector $r(s)$: reaching the home cell is worth ten and every other state is worth zero. Its entries are real-valued scores, not probabilities. They need not sum to one and could be negative. A reward need not always be indexed by state alone; this state-only example is used here because it makes the contrast in shape visible. It is not an additional object in the active-inference model on this page.
+
+Reward values can also be encoded as preferences, for example through $p(o\mid C)\propto\exp(r(o))$, where $r(o)$ assigns a reward to each observation. For a fixed horizon, the resulting pragmatic cost is negative expected reward plus a policy-independent constant. The information-gain term is the additional component of the score used here.
 
 In contrast $C$ comes from the agent, sitting inside the generative model alongside *A* and *B*. The world never signals that the agent has arrived; the agent has to recognise the reading it was after. So $C$ says how much the agent favours seeing something. Where several cells produce the same reading, the agent favours the reading, and any cell that produces it will satisfy the preference equally. In the grid world previously presented, if the agent desires to stay under the light, any lit tile would do.
 
-In this tutorial preferences are placed over observations. They can equally be placed over states, as a prior over where the agent would like to end up, and a good deal of the literature does exactly that. The two are not the same thing written differently, and where the difference matters is taken up in a later section.
+In this tutorial preferences are mainly placed over observations. They can equally be placed over states, as a prior over where the agent would like to end up, and a good deal of the literature does exactly that.
 
 ## A model you act on
 
@@ -46,7 +48,7 @@ It was built to explain readings that had already arrived: given this observatio
 
 Put $C$ alongside the model and you have a description of a situation the agent longs to be in. It is a target, and the agent act until the readings it receives look like the ones the model says it should be receiving.
 
-In most frameworks the model and the goal are separate objects, and a planner is what connects them. Here the goal sits inside the model, which means that acting to reach it and inferring where you are stop being two different operations.
+In most frameworks the model and the goal are separate objects, and a planner is what connects them. Here the goal sits inside the model, and belief updating and action selection are expressed within the same probabilistic framework.
 
 What remains is to turn that into a number, so that one action can be compared against another.
 
@@ -61,7 +63,7 @@ But the agent is not without resources. It has *B*, so it can work out where the
 
 This is the situation from the prediction step. An unknown quantity is averaged over, weighted by how likely each of its values is. The agent cannot say what it will see, but it can say how likely each observation is to be seen under the action it is considering.
 
-So the observation moves inside the expectation. In $F$ the observation sat outside, fixed; here it varies, and the agent averages over it. That single change is what turns a score for a belief into a score for an action.
+So the observation moves inside the expectation. In $F$ the observation sat outside, fixed; here it varies, and the agent averages over it. Averaging over possible observations lets us evaluate an action before its outcome is known. To obtain the goal-directed score used here, we must also introduce preferences into the distribution against which those predictions are scored.
 
 ## Expected free energy
 Write $\pi$ for the action under consideration, and $\tau$ for a step in the future. So $s_\tau$ is the state the agent would be in at that step, and $o_\tau$ is what it would see there. The current state stays $s$, as before.
@@ -108,19 +110,23 @@ Everything else is unchanged. Same belief, same *A*, same *B*, same expectation,
 
 A lower $G$ is better, as a lower $F$ was better. The agent computes it for each action available to it and compares.
 
-//FIGURE 2: score one policy by hand, every term shown separately, on the same grid and starting belief as Figure 1. Nothing moves. Each number traceable to its source: the belief, B, A, and C. Show q(s_tau|pi) as an intermediate quantity before the score, since the prose introduces it separately.//
+<widget id="pragmatic-term"></widget>
+
+<widget id="epistemic-term"></widget>
 
 
 
-## One action is not enough
+## Scoring a whole policy
 
-The agent can now score an action. But scoring a single step will not produce the behaviour this section set out to explain.
+The agent can now score an action. To account for what happens after that action, it scores a sequence of steps too.
 
-Go back to the unfamiliar kitchen. Opening the drawer by the sink is a step that gets you no closer to holding a fork: the drawer may be empty, and even if the fork is there you still have to take it. Judged on that step alone, walking towards where you guess the fork is scores better. The drawer is worth opening only because of what comes after it.
+### Fixed action sequences
 
-The same holds in the grid. One step towards a lamp is one step not taken towards the goal. Score that step on its own and going to the lamp loses. The detour only pays once the steps after it are counted, because that is when the sharper belief gets used.
+Go back to the unfamiliar kitchen. Opening the drawer by the sink is a step that gets you no closer to holding a fork: the drawer may be empty, and even if the fork is there you still have to take it. Whether the drawer is worth opening depends on what the next steps could achieve.
 
-So the agent scores sequences rather than single actions. A sequence of actions is called a **policy**, and $\pi$ now denotes one. The distinction is worth keeping: an action is something that changes the world, while a policy is a hypothesis about a way of behaving, one of several the agent is weighing up.
+The grid lets us check whether that intuition actually applies. With its two lamps and the home marker in their present positions, moving east already has the lowest one-step score. A lamp can therefore attract the agent immediately; this world does **not** demonstrate a detour that first loses and later wins. The question for a longer horizon is which *sequence* scores best, and whether later actions can depend on what the agent observes.
+
+So the agent scores sequences rather than single actions. Here we first consider fixed policies: sequences of actions are called **policies**, and $\pi$ now denotes one. The distinction is worth keeping: an action is something that changes the world, while a policy is a hypothesis about a way of behaving, one of several the agent is weighing up.
 
 The score for a policy is the sum of its per-step scores over the horizon:
 
@@ -128,9 +134,59 @@ $$G(\pi) = \sum_\tau G(\pi, \tau)$$
 
 where $\tau$ runs over the steps the agent is planning across. Each term is the quantity built above, evaluated at that step: the prediction carried one step further through *B*, *A* applied to it, and the model's joint at that point.
 
-One consequence follows from the previous section and is worth stating before it causes confusion. Each step's prediction is built from the one before it, and every pass through *B* spreads the belief. So the prediction at step five is vaguer than the prediction at step two, and everything computed from it is correspondingly less sharp. A policy's later steps contribute less that is definite than its earlier ones. Planning further ahead does not simply give the agent more to go on.
+One consequence follows from the previous section and is worth stating before it causes confusion. Each step's prediction is built from the one before it. In this world, prediction through *B* cannot make the position belief more concentrated; it often spreads it. Later predictions therefore do not automatically become more precise. Their contributions to $G$ can still rise or fall, because they also depend on which observations and preferred outcomes the policy is expected to produce.
 
-//FIGURE 3: three or four policies scored side by side on the same grid and starting belief, including one straight for the goal and one detouring via a lamp. Show G for each. The detour should win here, before the agent has moved. Expose horizon length: at horizon one the detour loses, and the reader should watch it start winning as the horizon grows. If it never wins in the world as built, report that rather than adjusting the world. Show the predicted belief at each step of each policy alongside the score, so the spreading is visible.//
+## Sophisticated Active Inferen
+
+**Planning for what you might learn**
+A fixed sequence says: open the drawer, then open the cupboard. But what if the drawer contains the fork? The next useful action depends on what you find.
+So far, the G(\pi) is computed over a given sequence of action, this mean the agent has scored each sequence with its later actions held fixed. It already favour informative observations through expected free energy. What this calculation does not yet represent is how those observations could change its subsequent actions.
+
+**Sophisticated active inference** makes that dependence explicit. For each possible next observation, the agent works out the belief it would hold after receiving it. From each of those possible beliefs, it evaluates what to do next. It then averages the continuation scores, weighted by how likely each observation is. Planning therefore branches over possible observations and the beliefs they would produce.
+
+Return to the kitchen: “open the drawer; if there is a fork, take it; otherwise, search elsewhere.” The agent evaluates the first action with these different continuations already in view.
+Both agents can update their beliefs and replan after a real observation. The distinction is that the sophisticated agent anticipates this future possible updating while choosing its present action.
+
+For two steps, a fixed policy $\pi=(a_1,a_2)$ has the score:
+
+$$G(\pi)=G(\pi,1)+G(\pi,2)$$
+
+To let the second action depend on the first reading, first compute the belief that each possible $o_1$ would produce. This is the same observation update used earlier, now applied to an imagined reading:
+
+$$
+q(s_1\mid o_1,a_1)
+=
+\frac{p(o_1\mid s_1)\,q(s_1\mid a_1)}
+     {q(o_1\mid a_1)}
+$$
+
+From that posterior, predict through *B* under a candidate second action $a_2$, then apply *A* and score the next step as before. Write the resulting score as $G(a_2,2\mid a_1,o_1)$: the second-step expected free energy, conditional on the first action and reading.
+
+The two-step score for the first action is then:
+
+$$
+G_{\mathrm{soph}}(a_1)
+=
+G(a_1,1)
++
+\sum_{o_1}q(o_1\mid a_1)
+\min_{a_2}G(a_2,2\mid a_1,o_1)
+$$
+
+The first term scores the first step. The second averages the best continuation from each possible posterior. The minimum sits **inside the sum**: each reading can lead to a different best second action. Readings with zero predicted probability contribute nothing and require no posterior.
+
+This is the lowest-score continuation rule used in the figure. For longer horizons, the agent repeats the same branching and updating at each future step.
+
+The per-step expected free energy retains the same preference and information terms. What changes is how future beliefs and actions enter the calculation. Extending a fixed sequence alone does not make planning sophisticated.
+
+
+In the figure below, switch from fixed sequences to sophisticated AIF. The branches show alternative beliefs after possible readings. They are different things the agent might come to believe, rather than successive steps along one trajectory.
+
+
+<widget id="policies-compared"></widget>
+
+On the Figure above, three of the five first actions are shown: **east**, which wins, **north**, the best move that does not begin toward a lamp, and **west**, the worst. In the fixed-sequence view, each column names the best complete policy starting with that action at the chosen horizon. Reading down it shows the predicted position belief after each action and the running sum of that policy's step scores. The bottom row compares the complete-policy totals. East is best even at horizon one and remains best here at longer horizons; the figure does not claim a delayed crossover. Changing the horizon can select a different complete sequence, so a running total at step two need not be the best *two-step* policy for that first action.
+
 
 ## What the score is made of
 
@@ -152,32 +208,104 @@ $$G(\pi, \tau) = \underbrace{-\,\mathbb{E}_{q(o_\tau \mid \pi)}\!\left[D_{\mathr
 
 The state has dropped out of the first expectation. The two logarithms have been written as a KL divergence, and the sum over $s_\tau$ is inside it, so what remains depends on $o_\tau$ alone. The second term never had a state in it: the only quantity there is the observation.
 
-**Pragmatic value** is the straightforward one. $q(o_\tau \mid \pi)$ is what the agent expects to see under this policy, built earlier by carrying the prediction through *A*. $p(o_\tau \mid C)$ is what it prefers to see. The term is large and negative when the two line up, so a policy delivering preferred observations lowers $G$. This is exploitation, written down.
+**Pragmatic value** is the straightforward one. $q(o_\tau \mid \pi)$ is what the agent expects to see under this policy, built earlier by carrying the prediction through *A*. $p(o_\tau \mid C)$ is what it prefers to see. Because preference probabilities are at most one, this cost is non-negative. It is *smaller* when the expected observations favour what $C$ prefers, and a smaller cost lowers $G$. This is exploitation, written down.
 
 **Epistemic value**, read the divergence inside it: $q(s_\tau \mid \pi)$ is what the agent believes about its position under this policy, and $q(s_\tau \mid o_\tau, \pi)$ is what it would believe after receiving observation $o_\tau$. The divergence between them is how much that observation would change the agent's mind. Averaged over the observations the policy might produce, it is how much the agent expects to learn. The minus sign means a policy that would teach it more lowers $G$.
 
 
-//FIGURE 3b: show that both terms lower $G$, so that the reader sees the two signs behave the same way.
+<widget id="efe-signs"></widget>
 
-SIGNS ARE CORRECT AS STATED HERE. Do not "fix" them. Both terms carry a leading minus, and every description below is read *after* that minus is applied, not off the sign in front of the expectation. Read the wrong way round they look inverted; they are not. Verified 2026-09-16, see docs/learning-records/0005.
-
-Pragmatic: $-\mathbb{E}_{q(o_\tau \mid \pi)}[\log p(o_\tau \mid C)]$. The better the expected observations match $C$, the more negative this term, so it pushes $G$ down. Show a policy whose expected observations match $C$ against one whose do not.
-
-Epistemic: $-\mathbb{E}_{q(o_\tau \mid \pi)}[D_{\mathrm{KL}}[\cdots]]$. A KL is never negative, so this term is never positive: it is $0$ for a policy that would teach the agent nothing and negative for one that would teach it something. It can only ever lower $G$, never raise it. Show a policy that stays in the dark ($0$) against one that reaches a lamp (negative).
-
-On the lamp world in site-src/widget.js, from a belief spread over the four top-left cells with $C$ preferring LIT: `down` scores epistemic $-0.2193$, pragmatic $+1.6983$; `right`, `up` and `stay` all score epistemic $0.0000$, pragmatic $+2.0829$. Those are the numbers this figure should reproduce.//
+These are the **one-step** scores for the east, north and west first actions in Figure 3, using its same starting belief and observation preference. East scores better in both comparisons: it has a more negative epistemic contribution *and* a smaller positive pragmatic cost. The leading minus signs in the formula do not make the two displayed terms both negative. The epistemic term cannot exceed zero; the pragmatic term cannot fall below zero while $C$ is a probability distribution.
 
 An agent scoring $G$ explores, and it explores because of the structure of the quantity rather than because anyone told it to.
 
 To link back to the kitchen example.
 
-A cupboard you can already guess the contents of has low epistemic value, because the observation would barely move the belief. A drawer you cannot predict has high epistemic value. The agent is drawn to what it cannot predict.
+A cupboard you can already guess the contents of has low epistemic value, because the observation would barely move the belief. Opening an unfamiliar drawer can have high epistemic value if seeing its contents resolves uncertainty about what is inside.
+
+An observation has epistemic value when it can resolve uncertainty about the hidden state. Unpredictability alone is insufficient: a noisy sensor may produce surprising observations without helping the agent locate itself.
+
+
+An observation has epistemic value when it can resolve uncertainty about the hidden state. Unpredictability alone is insufficient: a noisy sensor may produce surprising readings without helping the agent locate itself.
+
 
 Put a high preference on seeing a fork and the pragmatic term enters, favouring policies whose expected observations include one. In your own kitchen that term decides alone: you can predict every cupboard, so no observation would move your belief and the epistemic term is near zero whatever you do. You go straight to the drawer. In a kitchen you do not know, both terms are live, and the drawer by the sink scores on each: it is the one most likely to hold a fork, and it is informative about the layout either way.
 
-And with a flat $C$, the pragmatic term is nearly the same for every policy, so the agent is left choosing on epistemic value alone. It has nothing it is trying to bring about and it still acts, going to the places that would tell it most. That is the third kitchen case, and it falls out of the same expression.
+And with a uniform $C$ over the three observations, the pragmatic term is **exactly** $\log 3$ at every step, whatever the policy predicts. Across a horizon of $H$ steps, every fixed policy gets the same pragmatic cost $H\log 3$. Differences in $G$ are then entirely epistemic. It has no preferred observation and can still favour actions expected to teach it more. That is the third kitchen case, and it falls out of the same expression.
 
-//FIGURE 4: the table from Figure 3 with G split into its two terms per policy. Same policies, same numbers, one more column each. The reader should see which term the detour wins on and which it loses on. No new run. Add a toggle that flattens C and shows the scores recomputed, so the agent's remaining preference ordering is visible when only epistemic value is doing the work.//
+<widget id="preference-counterfactual"></widget>
+
+The horizon slider selects the best fixed policies beginning east, north and west under Figure 3's original $C$ **for that length**. Changing the horizon can therefore change those sequences. At any one horizon, the $C$ toggle **does not choose new sequences**: it scores the same ones again with uniform $C$. Their epistemic terms stay unchanged, while the pragmatic column becomes identical across all three rows. This isolates what changing preferences does to $G$ without mixing in a change of policy or sensor.
+
+In Sophisticated Active Inference, the agent considers each reading that could follow its first action, updates its predicted belief with that imagined reading, and scores the remaining actions from the resulting belief. Different readings can therefore lead to different continuations. Their scores are averaged according to how likely each reading is. The per-step quantity \(G(\pi,\tau)\) still scores expected preferences and information gain; what changes is how the future beliefs and actions used in those scores are computed. Extending a fixed sequence looks further ahead. Sophisticated planning also anticipates how learning along the way could change what the agent does next.
+
+### Preferring where you are
+
+So far, $C$ describes observations the agent wants to receive. But wanting to see a home marker and wanting to be home are different objectives. Home can remain the destination even when it has no distinctive marker.
+
+To express that preference, give $C$ one entry per state instead of one entry per observation:
+
+$$p(s_\tau\mid C)$$
+
+The entries still sum to one. A large entry for the home cell says that the agent prefers to occupy that cell. It does not say that the agent believes it is already there: $p(s_\tau\mid C)$ describes what is wanted, while $q(s_\tau\mid\pi)$ predicts what would happen under a policy.
+
+Recall the pragmatic term for preferences over observations:
+
+$$
+-\mathbb{E}_{q(o_\tau\mid\pi)}
+\left[\log p(o_\tau\mid C)\right]
+=
+-\sum_{o_\tau}q(o_\tau\mid\pi)\log p(o_\tau\mid C)
+$$
+
+For preferences over states, score the predicted states against the preferred ones instead:
+
+$$
+-\mathbb{E}_{q(s_\tau\mid\pi)}
+\left[\log p(s_\tau\mid C)\right]
+=
+-\sum_{s_\tau}q(s_\tau\mid\pi)\log p(s_\tau\mid C)
+$$
+
+The calculation has the same form: weight each preference cost by the probability of encountering it. The prediction through *B* already supplies $q(s_\tau\mid\pi)$, so this pragmatic term does not require converting that prediction into observations through *A*.
+
+For example, assign probability $c_{\mathrm{home}}$ to home and the same smaller probability $c_{\mathrm{other}}$ to each other cell. The pragmatic cost becomes:
+
+$$
+-q(s_\tau=\mathrm{home}\mid\pi)\log c_{\mathrm{home}}
+-
+\big[1-q(s_\tau=\mathrm{home}\mid\pi)\big]\log c_{\mathrm{other}}
+$$
+
+As the predicted probability of being home rises, this cost falls. The agent evaluates that probability using its belief; it does not need access to its true position.
+
+Keeping the information-gain term gives the state-preference score used here:
+
+$$
+G_{\mathrm{states}}(\pi,\tau)
+=
+\underbrace{
+-\mathbb{E}_{q(o_\tau\mid\pi)}
+\left[
+D_{\mathrm{KL}}\big[
+q(s_\tau\mid o_\tau,\pi)
+\,\|\,
+q(s_\tau\mid\pi)
+\big]
+\right]
+}_{\text{epistemic contribution}}
+\;
+\underbrace{
+-\mathbb{E}_{q(s_\tau\mid\pi)}
+\left[\log p(s_\tau\mid C)\right]
+}_{\text{pragmatic contribution}}
+$$
+
+This changes the objective being scored; it is not an algebraic rewriting of the observation-preference score. With the same belief, *A* and *B*, the epistemic contribution is unchanged. The pragmatic contribution now favours occupying preferred states.
+
+*A* still matters. A lamp reading can help the agent locate itself, even when the lamp cell has no greater preference than any other non-home cell. Home need not have a distinctive reading: observations elsewhere can help the agent infer where it is and choose actions that lead home.
+
+This choice of preference is separate from the choice between fixed and sophisticated planning. Either planner can use preferences over observations or states. The preference specifies what the agent wants; the planning procedure determines how it evaluates the steps ahead.
 
 > **The other ways $G$ is written**
 >
@@ -193,7 +321,7 @@ And with a flat $C$, the pragmatic term is nearly the same for every policy, so 
 >
 > The first line is the one used above, though you will often see its epistemic term written with the expectation over $o$ and $s$ together. Both are correct.
 >
-> The second line says the same thing in terms of how far the expected observations sit from the preferred ones, and how uninformative the sensor is likely to be at the states the policy visits. The third and fourth are where preferences over states appear, and note the sign: the third line is an inequality, so those forms bound $G$ rather than equalling it. That is why this tutorial keeps preferences over observations.
+> The second line says the same thing in terms of how far the expected observations sit from the preferred ones, and how uninformative the sensor is likely to be at the states the policy visits. The third and fourth are where preferences over states appear, and note the sign: the third line is an inequality, so those forms bound $G$ rather than equalling it. 
 >
 > The second grouping is what most implementations compute, and it is taken up in a later section.
 
@@ -205,92 +333,64 @@ The agent now has a score for each policy. It still has to pick one.
 
 The obvious rule is to take the lowest. That works, and it is what an agent should do when it trusts its own scores. But the scores are built from predictions, and predictions can be wrong: the belief they start from may be broad, and everything computed from it inherits that. A rule that always takes the lowest treats a score of 4.1 against 4.2 as decisively as 1.0 against 9.0.
 
-So the scores are turned into a distribution over policies instead. Negate, exponentiate, normalise:
+So one way to turn the scores into a distribution over policies is to negate, exponentiate, and normalise:
 
 $$q(\pi) = \sigma\!\left(-\gamma G(\pi)\right)$$
 
-where $\sigma$ is the **softmax** function. Reading it in pieces: negating makes low $G$ into high value, exponentiating makes everything positive, and normalising makes the results sum to one. What comes out is a probability for each policy, and the agent samples from it.
+where $\sigma$ is the **softmax** function. Reading it in pieces: negating makes low $G$ into high value, exponentiating makes everything positive, and normalising makes the results sum to one. What comes out is a probability for each policy; an agent using this rule can sample a policy from that distribution.
 
-$\gamma$ is called the **precision**, and it sets how sharply the best policy is favoured. At $\gamma$ near zero the distribution flattens towards uniform, and the agent chooses almost at random however different the scores are. As $\gamma$ grows the probability concentrates on the lowest-scoring policy, and in the limit the agent always takes it. So $\gamma$ expresses how much confidence the agent places in its own scores.
+After selecting a policy, the agent executes its first action, updates its belief with the resulting observation, and plans again from that updated belief.
 
-//FIGURE 5: the scores from Figure 4 converted to probabilities, with gamma exposed as a control. At low gamma the distribution is near-uniform; at high gamma nearly all probability sits on the lowest-scoring policy. Same table, one more column, nothing re-run.//
+$\gamma$ is called the **precision** and is positive. It sets how sharply the best policy is favoured. As $\gamma$ approaches zero from above, the distribution approaches uniform, and sampling becomes nearly random however different the scores are. As $\gamma$ grows the probability concentrates on the lowest-scoring policy, and in the limit sampling always selects it. Precision controls how strongly differences in $G$ affect this choice; it does not change those scores.
 
+<widget id="scores-to-probabilities"></widget>
+
+Figure 5 illustrates what $\gamma$ does to their probabilities, not a distribution over every possible policy. The probabilities use the full-precision scores, rather than the rounded numbers printed in the table.
 $\gamma$ can also be learned rather than fixed, so that the agent's confidence in its own planning adjusts as it goes. And a second prior over policies, written $E$, encodes a bias towards certain ways of behaving regardless of what they score: habits, in effect. We will introduce this in page 6.
 
 ## Watching it run
 
-Everything is now in place. The agent holds a belief, predicts where each policy would take it, scores each one, and samples an action.
+Everything is now in place. The agent holds a belief, predicts where its candidate actions or policies would take it, and scores them. In the run below, the belief-based agents choose an action greedily from their planning scores; they do not sample from Figure 5's three-policy softmax.
 
-Here is the world it is in. The agent wakes in the dark, after a hangover, with a rough idea of where it went to sleep. It knows the place well enough: two lamps, identical to look at, and home, marked by a colour on the floor. What it cannot do is see any of them from a distance. This agent is short-sighted to the point of uselessness: the only thing it senses is the cell it is standing on, which reads as lit, dark, or marked (home).
+Here is the world it is in. The agent wakes in the dark with a rough idea of where it went to sleep. It knows the place well enough: two lamps, identical to look at, and a home cell. It cannot see any of them from a distance; its sensor reports only the kind of cell it currently occupies.
 
-It looks, and sees dark. That rules out the two lit cells and nothing else, so what it is left with is the rough idea of where it went to sleep: it is somewhere in a handful of cells, and it could not tell you which exactly. Worse, that handful straddles the room. The agent is not slightly unsure of its position. It does not know which side of the place it is on.
+Its prior allows three cells, one of which contains the red dot. The belief-based agents begin with that prior and receive their first sensor reading after moving. Tabular Q alone needs an initial noisy reading to index its table, as in the comparison experiment. The agents' beliefs change after subsequent readings, though tabular Q does not consult the belief shown for it.
 
-The agent wants to get home, so $C$ puts almost all its weight on the marking. But since he is unsure of where it is, it can't quite tell where home is in respect to its position.
+The right-hand selector changes what $C$ prefers: a home-marked reading or occupying the home cell itself.
 
-//FIGURE 6: the only figure with motion.
+<widget id="agent-walk-comparison"></widget>
 
-WORLD SETUP, fixed and shared with Figures 1 to 5:
-5x5 grid, toroidal — the agent wraps from row 5 to row 1 and from column 5 to column 1, in both directions. No walls anywhere.
-Coordinates are (row, column), 1-indexed, rows increasing downwards, columns increasing to the right.
-Two lamps, at (5,3) and (3,5). Identical: both produce the same observation, and the sensor cannot tell them apart.
-Home marking at (1,5). Dark otherwise; the marking is a floor colour visible only from that cell.
-Every other cell is dark.
-Observation set, three values: lit, dark, marked. The sensor reports the cell the agent occupies and nothing else.
-Actions: north, south, east, west, stay. B as built in section 2, with the same spread. Stay is the identity.
+Both tasks assign **C(home)=0.50**: to the home reading under observation preferences, or to the home cell under state preferences. In the second task, home produces the same readings as an ordinary dark cell. Switching tasks therefore changes both the preference and the sensor model *A*. Physical movement is exact, but the agents’ model *B* assigns only 0.6 probability to the intended move, as in lesson 2.
 
-AGENT'S TRUE POSITION: (4,2). The agent does not know this. The figure may show it, but it must be visually distinct from the belief, since the prose describes what the agent can work out and the true position is something only the reader has.
-(4,2) is two steps from both lamps, and a south-then-east sequence reaches (5,3) from it, so the agent's walk genuinely succeeds.
+A lamp can help localisation in either task. Under the observation preference, its reading is also desirable in itself; under the state preference, every non-home cell has the same immediate pragmatic cost.
 
-STARTING BELIEF: a cluster of cells including (4,2), each of them at distance two from both lamps, near-equal among themselves and near zero elsewhere. The cluster must satisfy two properties at once, and they were established by running the numbers rather than assumed:
-— every cell in it is several steps from any lamp, so that reaching one requires committing to a direction and a random walk does not stumble on light immediately;
-— it straddles the two lamps, so that a lit reading leaves a two-peaked posterior at roughly 0.44 on each lamp rather than resolving outright.
-A tight cluster around a cell adjacent to one lamp was tested and rejected: the prior rules out the far lamp, a lit reading resolves the position outright, and the two lamps stop being ambiguous. A cluster adjacent to both lamps was also rejected: it gives the two-peaked posterior but makes one step enough, which any random walk would find.
+The five agents differ in how they choose actions:
 
-WHAT TO SHOW:
-The grid, the belief as a distribution over cells beside it, updated at every step.
-For each sequence under consideration, its G split into epistemic and pragmatic terms, so the reader can see which term is responsible for each choice as it is made.
-Both branches at the lamp: the lit outcome, giving the two-peaked belief, and the dark outcome, which eliminates most of the cluster. The prose makes a point of the failed expectation being informative and the reader should see it happen.
-The reader selects one comparison agent, so only two are on screen at once:
-— the reward maximiser
-— tabular Q-learning
-— nothing: a clean run of the active inference agent alone.
-Horizon and gamma remain available, since the reader has met each separately.
-Also expose the flat-C toggle from Figure 4, so the reader can watch the agent with nothing to seek.
+- **AIF** scores fixed action sequences using preferences and expected information gain, then replans after each reading.
+- **Sophisticated AIF** uses the same terms but allows future actions to depend on possible readings.
+- **Reward planner** scores fixed sequences using preference utility alone.
+- **Belief Q** learns action values from experience, using its full position belief.
+- **Tabular Q** learns action values indexed only by its latest reading.
 
-TO VERIFY RATHER THAN ASSUME:
-Whether a second sequence exists that separates the two remaining candidates after the first lamp, and how many steps it takes. The prose claims one does. If the torus makes the two candidates symmetric under everything the agent can do, that paragraph goes rather than the world.
-Whether the epistemic term genuinely separates directions from the starting cluster, so that the sequence ending at a lamp scores clearly above the ones that do not. If every direction scores alike, the cluster is wrong.
-Whether the sequence the agent would pick on pragmatic value alone ever wins, at any horizon or gamma.
-At what horizon the lamp sequence starts to beat heading straight for home.
-Report what the numbers give. If a claim in the prose does not hold, report that rather than adjusting the world.//
+For both Q learners, training provides utility based on the actual state in the hidden-home task. This signal can reveal home visits during training, although the sensor cannot distinguish home during the displayed runs.
 
+All displayed position beliefs use the same prior and Bayesian filter, updated from each agent’s actions and readings. Identical histories therefore give identical beliefs. For **Tabular Q**, this belief is calculated only for display; the learner does not use it.
 
-//REWRITE BELOW BASED ON WHAT WE ACTUALLY LEARN FROM THE MOTION IN WORLD//
+## Was your run typical?
 
-**Heading for home.** The agent has a rough idea where it is, so it has a rough idea which way home lies. It can set off that way. The trouble is that "that way" is only right if its rough idea is right, and what it has is not one idea but several, pointing in different directions. The agent knows this about itself, which is why setting off looks only moderately good to it. And nothing is learned on the way: the cells between here and there are dark, dark is what it expected, and expecting dark and then seeing dark does not inform the agent if it's getting closer or further.
+As one walk cannot answer that, here are results from 300 runs per agent in each task.
 
-**Walking until it finds a lamp.** There is a direction that pays. Two steps, south then east, and the agent may be standing under a lamp. Not every direction does this: walk the other way and there is nothing to find, and the agent spends the same two steps and arrives no wiser. Committing to the direction that could end somewhere lit is the whole of what this sequence is for.
+<widget id="figure6-curves"></widget>
 
-If it finds one, that rules out every dark cell in the grid at once. If it does not, it still learns where it was not, and the observation it expected and did not get does as much as the one it wanted.
+In the hidden-home task, beliefs become less concentrated on average, yet AIF’s most likely position becomes more often correct. **Confidence and accuracy are different:** increasing certainty does not necessarily mean correct localisation.
 
-The catch is that the two lamps look the same, so the agent would leave knowing it is under a lamp and no wiser about which. Its belief would narrow to two, one peak on each lamp, and it would still not know which side of the place it is on. 
+AIF reaches home and identifies its position more often than the fixed-sequence reward planner. With the same model, prior, horizon and preferences, this comparison shows the benefit of including expected information gain in this task. Sophisticated AIF performs similarly to AIF here; anticipating observation-dependent actions adds little on these measures in this simple world.
 
-**Finding a lamp, then working out which.** After the first lamp the agent is down to two candidates, far apart, and from each of them the grid looks different a few steps on. A second sequence, chosen so that what it produces depends on which candidate is true, would settle it. That costs more steps, and while it is happening the agent gets no nearer home.
+Tabular Q’s results depend strongly on training: in the home-marker task, 2 training seeds produced no successful evaluation runs, while the third achieved 75% success. The plotted interval does not capture this variation across training seeds.
 
+## What the detour shows
 
-The reward maximiser has the same map, the same *A*, the same *B*, and the same starting belief. It computes the route that collects the most reward in expectation and walks it. That is the first policy above, and it fails for the reason given: a route computed from a broad belief is a gamble, and nothing in what this agent scores can represent that. It does not plan badly. It plans from an uncertain belief and acts as though the belief were sharp.
-
-//PLACEHOLDER: explain the reward maximiser. Needs to cover what a reward is (a scalar attached to a state, supplied by the environment, discovered by acting), how the agent scores an action by the reward it expects to collect under its current belief, and a pointer out for readers who want the method properly. Keep it short: this tutorial does not teach reinforcement learning, and the agent is here only as a contrast. Note also that the contrast is not good method against bad one — minimising expected free energy and maximising expected reward coincide under conditions, and that should be acknowledged rather than glossed.//
-
-A note on the third option. Tabular Q-learning assumes the state is observed, and here it is not, so this is not a fair comparison and it is not meant to be. What it shows is that the assumption is what breaks: an agent that treats its observation as its state cannot represent being unsure where it is, so it has nothing to resolve and no reason to look. Reinforcement learning has methods that carry belief states or use recurrent policies, and they do considerably better. This tutorial does not cover them. //CHECK IF THAT IS TRUE WITH WORLD AND MOTION//
-
-## The detour was not added
-
-That detour was not put into the objective. Nobody wrote a rule saying to visit a lamp before the marking, or set a bonus on lit cells, or traded exploration against exploitation with a coefficient.
-
-What was specified is one score, and inside it a statement of what the agent wants to see. The rest came from the structure of the quantity: because the observation is unknown and has to be averaged over, the score separates into a term about what a policy would deliver and a term about what it would reveal. 
-
-An agent that scores outcomes must be told to explore. An agent that scores expected free energy explores because of what the score is.
+No agent was given an explicit bonus for reaching a lamp. AIF's information term can make a lamp route attractive because a lamp reading can narrow its position belief. A reward planner can also value a useful reading when it plans actions contingent on future observations; the fixed-sequence reward planner here does not make such branches. Which route wins depends on the model, preferences, horizon and actual readings, so one walk is not a general performance claim.
 
 
 ///possible sources

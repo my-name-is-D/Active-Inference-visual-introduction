@@ -36,6 +36,76 @@ summary { cursor:pointer; color:var(--accent); font-weight:600; }
 .widget { margin:1.5rem 0; padding:1rem; border:1px solid var(--rule); border-radius:4px; }
 .widget canvas { display:block; }
 .widget button { margin-right:.4rem; padding:.3rem .7rem; }
+.efe-counterfactual { font:14px/1.45 system-ui,sans-serif; }
+.efe-counterfactual h4 { margin:0 0 .65rem; font-size:1.08rem; }
+.efe-counterfactual-controls { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem 1.6rem; }
+.efe-counterfactual-controls label { display:inline-flex; align-items:center; gap:.4rem; cursor:pointer; }
+.efe-counterfactual-controls output { min-width:1ch; font-weight:700; }
+.efe-counterfactual-preference { margin:.8rem 0 .55rem; color:var(--dim); }
+.efe-counterfactual-scroll { max-width:100%; overflow-x:auto; }
+.efe-counterfactual-table { width:100%; min-width:650px; margin:.3rem 0; table-layout:fixed; }
+.efe-counterfactual-table th,.efe-counterfactual-table td { padding:.55rem .6rem; vertical-align:middle; }
+.efe-counterfactual-table th:first-child { width:25%; }
+.efe-counterfactual-table th:nth-child(2),.efe-counterfactual-table th:nth-child(3) { width:30%; }
+.efe-counterfactual-table th:last-child { width:15%; }
+.efe-counterfactual-table tr.best { background:#eef5fb; }
+.efe-counterfactual-table td:first-child strong,.efe-counterfactual-table td:first-child small { display:block; }
+.efe-counterfactual-table td:first-child small { color:var(--dim); white-space:nowrap; }
+.efe-counterfactual-track { position:relative; display:block; height:13px; background:#eef1f4; border:1px solid var(--rule); }
+.efe-counterfactual-track::after { content:""; position:absolute; top:-2px; bottom:-2px; width:1px; background:#5a5a5a; }
+.efe-counterfactual-track.negative::after { right:0; }
+.efe-counterfactual-track.positive::after { left:0; }
+.efe-counterfactual-bar { position:absolute; top:0; bottom:0; }
+.efe-counterfactual-track.negative .efe-counterfactual-bar { right:0; background:#e8563f; }
+.efe-counterfactual-track.positive .efe-counterfactual-bar { left:0; background:#4c72b0; }
+.efe-counterfactual-number { display:block; margin-top:.15rem; font-variant-numeric:tabular-nums; }
+.efe-counterfactual-total { font-weight:700; font-variant-numeric:tabular-nums; }
+.efe-counterfactual-explanation { margin:.7rem 0 0; color:var(--dim); }
+.policy-precision { font:14px/1.45 system-ui,sans-serif; }
+.policy-precision h4 { margin:0 0 .65rem; font-size:1.08rem; }
+.policy-precision-control { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; font-weight:650; }
+.policy-precision-control input { flex:1 1 12rem; max-width:20rem; }
+.policy-precision-control output { min-width:3ch; font-variant-numeric:tabular-nums; }
+.policy-precision-context,.policy-precision-readout { margin:.7rem 0; color:var(--dim); }
+.policy-precision-scroll { max-width:100%; overflow-x:auto; }
+.policy-precision-table { width:100%; min-width:500px; margin:.3rem 0; table-layout:fixed; }
+.policy-precision-table th,.policy-precision-table td { padding:.55rem .6rem; vertical-align:middle; }
+.policy-precision-table th:first-child { width:31%; }
+.policy-precision-table th:nth-child(2) { width:20%; }
+.policy-precision-table th:last-child { width:49%; }
+.policy-precision-table tr.best { background:#eef5fb; }
+.policy-precision-table td:first-child strong,.policy-precision-table td:first-child small { display:block; }
+.policy-precision-table td:first-child small { color:var(--dim); white-space:nowrap; }
+.policy-precision-score,.policy-precision-number { font-variant-numeric:tabular-nums; }
+.policy-precision-score { font-weight:700; }
+.policy-precision-track { display:block; height:13px; background:#eef1f4; border:1px solid var(--rule); }
+.policy-precision-bar { display:block; height:100%; background:#4c72b0; }
+.policy-precision-number { display:block; margin-top:.15rem; }
+.walk-widget { font: 14px/1.45 system-ui, sans-serif; }
+.walk-controls { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:.7rem; }
+.walk-control-heading { font-weight:700; align-self:end; }
+.walk-control { display:flex; flex-direction:column; gap:.25rem; min-width:13rem; font-weight:650; }
+.walk-control select { font:inherit; padding:.35rem; border:1px solid var(--rule); background:white; max-width:100%; }
+.walk-status { font-weight:650; margin:.45rem 0 .75rem; }
+.walk-agent-panel { border-top:1px solid var(--rule); padding:.9rem 0 1.2rem; }
+.walk-panel-head { display:flex; justify-content:space-between; align-items:center; gap:1rem; font-weight:700; }
+.walk-panel-head select { font:inherit; padding:.3rem; min-width:13rem; max-width:65%; }
+.walk-panel-status { color:var(--dim); margin:.35rem 0 .6rem; }
+.walk-motion { margin:.25rem 0 .4rem; font-weight:700; color:#1e5d70; }
+.walk-canvas-panel canvas, .walk-prediction canvas { width:100%; height:auto; }
+.walk-nav { display:flex; align-items:center; flex-wrap:wrap; gap:.3rem; margin:.9rem 0; }
+.walk-nav button { font:inherit; padding:.35rem .65rem; cursor:pointer; }
+.walk-nav button:disabled { cursor:default; opacity:.48; }
+.walk-count { color:var(--dim); margin-left:auto; }
+.walk-readout { background:#f3f7f6; border-left:3px solid #347c72; padding:.6rem .75rem; min-height:3rem; }
+.walk-explanation { margin:.7rem 0 0; }
+.walk-details { margin:.7rem 0 0; padding:.4rem 0 .2rem .7rem; font-size:.9rem; }
+.walk-details p { margin:.5rem 0; }
+.walk-prediction { margin:.7rem 0; }
+.walk-prediction strong { display:block; margin-bottom:.3rem; }
+@media(max-width:560px) {
+  .walk-panel-head select { min-width:0; max-width:60%; }
+}
 /* Asides: the "if you want the number behind the bar" / "if matrix products do
    not yet read as sums" boxes. Set off as a panel so a reader can see at a
    glance that the passage is optional and skip it. */

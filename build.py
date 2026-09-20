@@ -23,6 +23,7 @@ PAGES = [
     ("lesson-1", CONTENT / "lesson-1.md"),
     ("lesson-2", CONTENT / "lesson-2.md"),
     ("lesson-3", CONTENT / "lesson-3.md"),
+    ("lesson-4", CONTENT / "lesson-4.md"),
 ]
 
 
@@ -177,7 +178,9 @@ def build_page(slug, md_path, out_dir):
 
 
 def copy_assets(out_dir):
-    names = ["page.css", "aif.js", "widget.js"] + [f"{slug}.js" for slug, _ in PAGES]
+    names = ["page.css", "aif.js", "widget.js", "agent-comparison.js",
+             "agent-comparison-data.js", "figure6-curves.js",
+             "figure6-curves-data.js"] + [f"{slug}.js" for slug, _ in PAGES]
     for name in names:
         shutil.copy(SITE_SRC / name, out_dir / name)
     katex_src = SITE_SRC / "katex"

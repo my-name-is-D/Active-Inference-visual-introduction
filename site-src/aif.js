@@ -46,6 +46,139 @@ export function surprise(prior, A, obs) {
   return -Math.log(p);
 }
 
+// Shannon entropy in nats. Zero-probability entries contribute zero by
+// continuity: lim(x -> 0+) -x log(x) = 0.
+export function entropy(p) {
+  return p.reduce((h, x) => h - (x > 0 ? x * Math.log(x) : 0), 0);
+}
+
+// D_KL[p || q] in nats. A zero in p contributes nothing; positive mass in p
+// where q is zero makes the divergence infinite.
+export function klDiv(p, q) {
+  if (p.length !== q.length) throw new Error("KL distributions must have the same length");
+  let total = 0;
+  for (let i = 0; i < p.length; i++) {
+    if (p[i] <= 0) continue;
+    if (q[i] <= 0) return Infinity;
+    total += p[i] * Math.log(p[i] / q[i]);
+  }
+  return total;
+}
+
+// Read a state belief forwards through A: q(o) = sum_s A[o][s] q(s).
+export function expectedObs(A, stateBelief) {
+  return A.map((likelihood) =>
+    likelihood.reduce((total, pObsGivenState, s) => total + pObsGivenState * stateBelief[s], 0),
+  );
+}
+
+// Expected prior surprise (cross-entropy) under predicted observations:
+//   -E_q(o)[log p(o | C)].
+// This term is non-negative, and lower values favour preferred observations.
+export function pragmatic(outcomeBelief, preferences) {
+  if (outcomeBelief.length !== preferences.length) {
+    throw new Error("outcome belief and preferences must have the same length");
+  }
+  let total = 0;
+  for (let o = 0; o < outcomeBelief.length; o++) {
+    if (outcomeBelief[o] <= 0) continue;
+    if (preferences[o] <= 0) return Infinity;
+    total -= outcomeBelief[o] * Math.log(preferences[o]);
+  }
+  return total;
+}
+
+// Negative expected information gain:
+//   -E_q(o)[D_KL(q(s | o) || q(s))].
+// Impossible observations are skipped: their posterior is undefined, but
+// their expectation weight is zero. The result can never be positive.
+export function epistemic(A, stateBelief) {
+  const outcomeBelief = expectedObs(A, stateBelief);
+  let total = 0;
+  for (let o = 0; o < outcomeBelief.length; o++) {
+    const qo = outcomeBelief[o];
+    if (qo <= 0) continue;
+    const posterior = stateBelief.map((qs, s) => (A[o][s] * qs) / qo);
+    total -= qo * klDiv(posterior, stateBelief);
+  }
+  return total;
+}
+
+// Sum expected free energy along an open-loop action sequence. `trace` holds
+// predictions before any future observation is received; hypothetical
+// posteriors are integrated out by the epistemic term, not propagated as if
+// one of those observations had already happened.
+export function scorePolicy(belief, B, A, preferences, policy) {
+  let predicted = belief.slice();
+  let epistemicTotal = 0;
+  let pragmaticTotal = 0;
+  const trace = [];
+  for (const action of policy) {
+    predicted = predict(predicted, B, action);
+    const outcomes = expectedObs(A, predicted);
+    const epistemicValue = epistemic(A, predicted);
+    const pragmaticValue = pragmatic(outcomes, preferences);
+    const G = epistemicValue + pragmaticValue;
+    epistemicTotal += epistemicValue;
+    pragmaticTotal += pragmaticValue;
+    trace.push({
+      action,
+      belief: predicted.slice(),
+      outcomes,
+      epistemic: epistemicValue,
+      pragmatic: pragmaticValue,
+      G,
+    });
+  }
+  return {
+    G: epistemicTotal + pragmaticTotal,
+    epistemic: epistemicTotal,
+    pragmatic: pragmaticTotal,
+    trace,
+  };
+}
+
+// Expected free energy per first action when later actions may depend on
+// observations. At each branch Bayes' rule updates the predicted belief,
+// then the planner chooses the lowest-cost continuation. This is deliberately
+// separate from scorePolicy: a contingent policy tree is not a fixed sequence.
+export function sophisticatedValues(belief, B, A, preferences, horizon) {
+  if (!Number.isInteger(horizon) || horizon < 1) {
+    throw new Error("horizon must be a positive integer");
+  }
+  const actions = B[0][0].length;
+  function values(prior, remaining) {
+    return Array.from({ length: actions }, (_, action) => {
+      const predicted = predict(prior, B, action);
+      const outcomes = expectedObs(A, predicted);
+      let cost = epistemic(A, predicted) + pragmatic(outcomes, preferences);
+      if (remaining > 1) {
+        for (let o = 0; o < outcomes.length; o++) {
+          const probability = outcomes[o];
+          if (probability <= 0) continue;
+          const posterior = predicted.map((q, s) => A[o][s] * q / probability);
+          cost += probability * Math.min(...values(posterior, remaining - 1));
+        }
+      }
+      return cost;
+    });
+  }
+  return values(belief, horizon);
+}
+
+// Policy posterior q(pi) = softmax(-gamma * G(pi)). Subtracting the largest
+// logit leaves the result unchanged and prevents overflow.
+export function softmax(scores, gamma = 1) {
+  if (scores.length === 0) return [];
+  if (!Number.isFinite(gamma) || gamma < 0) throw new Error("gamma must be finite and non-negative");
+  if (!scores.every(Number.isFinite)) throw new Error("softmax scores must be finite");
+  const logits = scores.map((score) => -gamma * score);
+  const largest = Math.max(...logits);
+  const weights = logits.map((logit) => Math.exp(logit - largest));
+  const total = weights.reduce((a, b) => a + b, 0);
+  return weights.map((weight) => weight / total);
+}
+
 // Action order matches worlds/gridworld.py ACTIONS.
 const MOVES = [
   [-1, 0], // up
@@ -199,6 +332,42 @@ async function demo() {
   ];
   check(approx(surprise([1, 0], certain2, 0), 0.0), "surprise zero when certain");
   check(approx(surprise([0.5, 0.5], certain2, 0), Math.log(2)), "surprise ln 2 on a coin flip");
+
+  // Information-theoretic primitives use natural logarithms throughout.
+  check(approx(entropy([1, 0]), 0), "entropy zero on a point mass");
+  check(approx(entropy([0.5, 0.5]), Math.log(2)), "entropy of a fair binary belief");
+  check(approx(klDiv([0.5, 0.5], [0.5, 0.5]), 0), "KL zero for equal distributions");
+  check(klDiv([1, 0], [0, 1]) === Infinity, "KL infinite on unsupported mass");
+
+  const qState2 = [0.6, 0.4];
+  const qOutcome2 = expectedObs(A2, qState2);
+  check(approx(qOutcome2[0], 0.58) && approx(qOutcome2[1], 0.42), "expected observations A @ q(s)");
+  const C2 = [0.2, 0.8];
+  const epi2 = epistemic(A2, qState2);
+  const pra2 = pragmatic(qOutcome2, C2);
+  check(epi2 <= 0, "negative expected information gain is non-positive");
+  check(pra2 >= 0, "expected prior surprise is non-negative");
+
+  // The two standard EFE decompositions agree:
+  //   -information gain + expected prior surprise
+  //   = expected observation ambiguity + risk over outcomes.
+  const ambiguity2 = qState2.reduce((total, qs, s) => {
+    const observationColumn = A2.map((row) => row[s]);
+    return total + qs * entropy(observationColumn);
+  }, 0);
+  const risk2 = klDiv(qOutcome2, C2);
+  check(approx(epi2 + pra2, ambiguity2 + risk2), "EFE decompositions agree");
+
+  const policyPosterior = softmax([1, 2, 3], 2);
+  check(approx(policyPosterior.reduce((a, b) => a + b, 0), 1), "policy softmax sums to one");
+  check(
+    policyPosterior[0] > policyPosterior[1] && policyPosterior[1] > policyPosterior[2],
+    "policy softmax favours lower G",
+  );
+  check(
+    softmax([1, 2, 3], 0).every((x) => approx(x, 1 / 3)),
+    "zero policy precision is uniform",
+  );
 
   // predict: mass moves, never created; state 0 -> state 1, state 1 -> state 1
   const B2 = [
@@ -363,6 +532,23 @@ async function demo() {
   spike[10] = 1;
   check(approx(nEnt(spike), 0, 1e-12), "entropy is 0 on a one-hot belief");
   check(approx(nEnt(uniformBelief(25)), 1, 1e-12), "entropy is 1 on a uniform belief");
+
+  // Figure 6's See-home-marker task, independently checked against
+  // aif.comparison.sophisticated_values for horizons 1–4. The first-action
+  // order is north, south, west, east, stay.
+  const prior4 = Array.from({ length: 25 }, (_, s) => [8, 12, 16].includes(s) ? 1 / 3 : 0);
+  const A4 = [0, 1, 2].map((o) => Array.from({ length: 25 }, (_, s) => {
+    const kind = s === 4 ? 2 : [9, 13].includes(s) ? 1 : 0;
+    return o === kind ? 0.9 : 0.05;
+  }));
+  const B4 = transitionModel({ rows: 5, cols: 5, reliability: 0.6 });
+  const C4 = [1 / 6, 1 / 3, 1 / 2];
+  const pythonEast = [0.9445, 1.9279, 2.7825, 3.6339];
+  for (let h = 1; h <= 4; h++) {
+    const scores = sophisticatedValues(prior4, B4, A4, C4, h);
+    check(approx(scores[3], pythonEast[h - 1], 5e-5), `sophisticated horizon ${h} matches Python`);
+    check(scores[3] === Math.min(...scores), `east is sophisticated planner's best first action at horizon ${h}`);
+  }
 
   if (failures > 0) {
     console.error(`aif.js: ${failures} check(s) failed`);

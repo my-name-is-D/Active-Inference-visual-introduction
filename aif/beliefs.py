@@ -70,6 +70,16 @@ def update(prior, A, observation):
     return posterior, likelihood, unnormalised
 
 
+def filter_step(belief, B, A, action, observation):
+    """Shared position filter: predict under the action, then apply Bayes.
+
+    No true position or reward enters the update. With identical histories
+    every agent obtains the same posterior from this function.
+    """
+    predicted = B[:, :, action] @ np.asarray(belief, dtype=float)
+    return update(predicted, A, observation)[0]
+
+
 def surprise(prior, A, observation):
     """How unexpected an observation was, in nats.
 

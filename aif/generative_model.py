@@ -2,7 +2,7 @@
 
     A[observation, state]          what it expects to see in each state
     B[next_state, state, action]   how states change when it acts
-    C[observation]                 which observations it prefers, in log space
+    C[observation]                 preference probabilities (logged when scoring)
     D[state]                       where it believes it starts
 
 That is the whole generative model. It is not learned and it is not deep: on
@@ -71,6 +71,55 @@ def observation_model(world):
                 A[neighbour, state] += noise / len(neighbours)
         else:
             A[state, state] = 1.0
+
+    check_columns_sum_to_one(A, "A")
+    return A
+
+
+def kind_observation_model(world, p_correct=0.9, mark_goal=False):
+    """Build `A` where the agent senses the *kind* of cell it stands on.
+
+    The other model here, `observation_model`, gives a lit cell its own
+    observation; with a perfect sensor it resolves position outright. This one reports
+    only a kind, so cells of the same kind are indistinguishable. Two lamps
+    look alike: a lit reading favours lamp cells without distinguishing them.
+    With sensor noise, that reading is not conclusive about being at a lamp.
+
+    The kinds, and therefore the number of rows:
+
+        mark_goal=False   2 rows: DARK=0, LIT=1
+        mark_goal=True    3 rows: DARK=0, LIT=1, MARKED=2
+
+    `mark_goal` gives the goal cell a kind of its own, which is what a lesson
+    needs when a preference over *observations* has to be able to single the
+    goal out: a goal that reads as plain dark cannot be preferred, because
+    every dark cell would satisfy the preference equally.
+
+    `p_correct` is how often the sensor reports the true kind; the rest is
+    split evenly over the other kinds. At `p_correct=1` the sensor is perfect
+    and a reading is conclusive about the kind. It identifies a cell only
+    when that kind belongs to a unique cell, such as the marked goal.
+
+    Returns shape (2, n_states) or (3, n_states).
+    """
+    DARK, LIT, MARKED = 0, 1, 2
+    n_kinds = 3 if mark_goal else 2
+    n_states = world.n_states
+    A = np.zeros((n_kinds, n_states))
+
+    for state in range(n_states):
+        position = world.state_position(state)
+        if mark_goal and position == world.goal:
+            true_kind = MARKED
+        elif world.lit[position]:
+            true_kind = LIT
+        else:
+            true_kind = DARK
+        for kind in range(n_kinds):
+            if kind == true_kind:
+                A[kind, state] = p_correct
+            else:
+                A[kind, state] = (1.0 - p_correct) / (n_kinds - 1)
 
     check_columns_sum_to_one(A, "A")
     return A
@@ -163,6 +212,33 @@ def demo():
     dark_columns = [s for s in range(dark.n_states) if A_dark[dark_index, s] == 1.0]
     assert len(dark_columns) == 8
     assert A_dark[4, 4] == 1.0   # the lit cell still reports itself
+
+    # kind_observation_model: the agent senses a KIND, so cells of the same
+    # kind are indistinguishable. Two rows without a marked goal, three with.
+    lamps2 = dark_with_lamps(size=(5, 5), lamps=[(1, 4), (2, 3)], goal=(0, 4))
+    A_kind2 = kind_observation_model(lamps2)
+    assert A_kind2.shape == (2, 25)
+    check_columns_sum_to_one(A_kind2, "A_kind2")
+
+    A_kind3 = kind_observation_model(lamps2, mark_goal=True)
+    assert A_kind3.shape == (3, 25)
+    check_columns_sum_to_one(A_kind3, "A_kind3")
+
+    # The goal reads as MARKED only when asked for; otherwise it is just dark.
+    goal_state = lamps2.state_index(lamps2.goal)
+    assert np.isclose(A_kind3[2, goal_state], 0.9)
+    assert np.isclose(A_kind2[0, goal_state], 0.9)
+
+    # The two lamps are genuinely identical: same column, so a reading cannot
+    # tell them apart. This is what lesson 4's ambiguity rests on.
+    lamp_states = [lamps2.state_index(p) for p in [(1, 4), (2, 3)]]
+    assert np.allclose(A_kind3[:, lamp_states[0]], A_kind3[:, lamp_states[1]])
+    assert np.isclose(A_kind3[1, lamp_states[0]], 0.9)
+
+    # A perfect sensor is conclusive about kind but not which of two lamps.
+    A_sharp = kind_observation_model(lamps2, p_correct=1.0, mark_goal=True)
+    assert np.allclose(A_sharp[:, lamp_states[0]], [0.0, 1.0, 0.0])
+    assert np.allclose(A_sharp[:, lamp_states[0]], A_sharp[:, lamp_states[1]])
 
     # A noisy sensor keeps its columns proper distributions.
     noisy = GridWorld(size=(3, 3), sensor_noise=0.3)

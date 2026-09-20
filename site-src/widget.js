@@ -110,13 +110,23 @@ export function lampBeliefs() {
 // `opts.showIds` prints the cell index (0..24) in each cell, matching the
 // column index printed above the A matrix, so the two can be read together.
 export function drawGrid(ctx, x, y, cell, opts = {}) {
-  const { agent = null, observed = null, mark = null, lit = LIT_MASK, showIds = false } = opts;
+  const { agent = null, observed = null, mark = null, lit = LIT_MASK,
+          showIds = false, home = null, homeHidden = false } = opts;
   for (let s = 0; s < N; s++) {
     const r = Math.floor(s / COLS);
     const c = s % COLS;
     const isLit = s === agent && observed !== null ? observed === LIT : lit[s];
-    ctx.fillStyle = isLit ? COLOUR.lit : COLOUR.dark;
+    ctx.fillStyle = s === home ? (homeHidden ? '#334139' : '#32738a')
+      : isLit ? COLOUR.lit : COLOUR.dark;
     ctx.fillRect(x + c * cell, y + r * cell, cell - 2, cell - 2);
+    if (s === home) {
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.round(cell * 0.32)}px system-ui, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('H', x + c * cell + 3, y + r * cell + 2);
+      ctx.textBaseline = 'alphabetic';
+    }
     if (isLit) {
       ctx.strokeStyle = COLOUR.litEdge;
       ctx.lineWidth = 1;
@@ -199,7 +209,8 @@ function iso(row, col, h, ox, oy, cell, lift) {
 }
 
 export function drawIsoPlane(ctx, ox, oy, cell, opts = {}) {
-  const { heights = null, agent = null, observed = null, lit = LIT_MASK } = opts;
+  const { heights = null, agent = null, observed = null, lit = LIT_MASK,
+          home = null, homeHidden = false } = opts;
   // Back to front so nearer cells and taller bumps overdraw what is behind.
   const order = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) order.push([r, c]);
@@ -219,11 +230,21 @@ export function drawIsoPlane(ctx, ox, oy, cell, opts = {}) {
     ctx.moveTo(p[0][0], p[0][1]);
     for (let i = 1; i < 4; i++) ctx.lineTo(p[i][0], p[i][1]);
     ctx.closePath();
-    ctx.fillStyle = heights ? "#efefec" : isLit ? COLOUR.lit : COLOUR.dark;
+    ctx.fillStyle = heights ? "#efefec" : s === home && homeHidden ? "#334139"
+      : isLit ? COLOUR.lit : COLOUR.dark;
     ctx.fill();
-    ctx.strokeStyle = COLOUR.rule;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = s === home && !heights ? COLOUR.agent : COLOUR.rule;
+    ctx.lineWidth = s === home && !heights ? 2.5 : 1;
     ctx.stroke();
+
+    if (s === home && !heights) {
+      const [hx, hy] = iso(r + 0.5, c + 0.5, 0, ox, oy, cell, lift);
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.round(cell * 0.5)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('H', hx, hy - cell * 0.22);
+      ctx.textAlign = 'left';
+    }
 
     if (agent === s && !heights) {
       const [ax, ay] = iso(r + 0.5, c + 0.5, 0, ox, oy, cell, lift);
@@ -286,11 +307,12 @@ export function autoplay(el, stepFn, nSteps, ms) {
   return button;
 }
 
-export function label(ctx, text, x, y, colour = COLOUR.dim, size = 16) {
+export function label(ctx, text, x, y, colour = COLOUR.dim, size = 16, align = "left") {
   ctx.fillStyle = colour;
   ctx.font = `${size}px system-ui, sans-serif`;
-  ctx.textAlign = "left";
+  ctx.textAlign = align;
   ctx.fillText(text, x, y);
+  ctx.textAlign = "left";   // restore: callers below assume the default
 }
 
 // Shared matrix drawing for a-columns and a-rows. Rows are observations in the
@@ -571,4 +593,95 @@ export function drawOperand(ctx, x, y, values, opts = {}) {
     ctx.fillStyle = COLOUR.agent;
     ctx.fillText(t.toFixed(2), x + cols * cell + 10, y + (cell - 2) / 2 + 4);
   }
+}
+
+// ===========================================================================
+// State-vector annotation
+// ===========================================================================
+
+// Marks under a state vector: a small arrow at a column, its name beneath.
+// Used wherever a lesson draws a distribution over states, so that the same
+// cell always carries the same label in the same place and the reader can
+// follow one state across rows and figures without reading any numbers.
+//
+// `columns` is the state index shown in each column, for a row that shows a
+// subset; pass null when the row shows every state in index order, which is
+// the usual case. Whatever the row was drawn with must be passed here too, or
+// the marks drift away from the bars they annotate.
+//
+// Marks whose labels would overlap are staggered onto a second line rather
+// than overprinted. A mark naming a state the row does not show is a caller
+// error and throws: a figure with a mislabelled state should fail loudly
+// rather than quietly point at the wrong cell.
+export function drawStateMarks(ctx, x, y, cellW, marks, columns = null) {
+  const placed = [];
+  for (const mark of marks) {
+    const column = columns === null ? mark.index : columns.indexOf(mark.index);
+    if (column < 0) {
+      throw new Error(`drawStateMarks: state ${mark.index} is not in this row`);
+    }
+    const centre = x + column * cellW + (cellW - 2) / 2;
+    const colour = mark.colour ?? COLOUR.dim;
+
+    ctx.font = "12px system-ui, sans-serif";
+    const halfWidth = ctx.measureText(mark.label).width / 2;
+    // Second line when this label would touch the previous one.
+    const clash = placed.some(
+      (p) => Math.abs(p.centre - centre) < p.halfWidth + halfWidth + 6,
+    );
+    const row = clash ? 1 : 0;
+    placed.push({ centre, halfWidth });
+
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(centre, y + 2);
+    ctx.lineTo(centre, y + 9);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centre - 3, y + 4);
+    ctx.lineTo(centre, y + 1);
+    ctx.lineTo(centre + 3, y + 4);
+    ctx.stroke();
+
+    ctx.fillStyle = colour;
+    ctx.textAlign = "center";
+    ctx.fillText(mark.label, centre, y + 22 + row * 14);
+    ctx.textAlign = "left";
+  }
+}
+
+// A distribution over states as a row of bars, one column per state, in index
+// order. Unlike `drawRow` this prints no per-bar values: at twenty-five
+// columns there is no room for them, and the numbers belong in a readout
+// where a whole line is available. What the row carries is shape and
+// position, which is what makes two beliefs comparable at a glance.
+//
+// `scale` fixes the bar height against a peak shared with another row, so two
+// rows drawn with the same scale can be read against each other.
+export function drawStateStrip(ctx, x, y, values, opts = {}) {
+  const {
+    cellW = 24,
+    barH = 34,
+    scale = null,
+    colour = COLOUR.neutral,
+    highlight = [],
+  } = opts;
+  const peak = scale ?? Math.max(...values, 1e-9);
+
+  for (let s = 0; s < values.length; s++) {
+    const bx = x + s * cellW;
+    const w = cellW - 4;
+    ctx.fillStyle = "#eef1f4";
+    ctx.fillRect(bx, y, w, barH);
+    const h = (values[s] / peak) * barH;
+    ctx.fillStyle = highlight.includes(s) ? COLOUR.agent : colour;
+    ctx.fillRect(bx, y + barH - h, w, h);
+  }
+  ctx.strokeStyle = COLOUR.rule;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y + barH + 0.5);
+  ctx.lineTo(x + values.length * cellW - 4, y + barH + 0.5);
+  ctx.stroke();
 }
