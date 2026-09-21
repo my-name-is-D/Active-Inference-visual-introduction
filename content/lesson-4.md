@@ -309,7 +309,11 @@ This choice of preference is separate from the choice between fixed and sophisti
 
 > **The other ways $G$ is written**
 >
-> $G$ can be grouped differently, and the literature uses several forms. They are the same quantity read from different angles, and the chain below is how they are usually set out.
+> $G$ can be grouped differently. The chain below relates equivalent expressions and an upper bound, under an explicit assumption: the preference-bearing target distribution uses the same observation likelihood *A* as the predictive model. Thus:
+>
+> $$p(o,s\mid C)=p(o\mid s)p(s\mid C),\qquad p(o\mid C)=\sum_s p(o\mid s)p(s\mid C)$$
+>
+> Here the observation and state preferences are linked through *A*, rather than chosen independently. With time indices suppressed, the relationship is:
 >
 > $$G(\pi) = \underbrace{-\mathbb{E}_{q(o\mid\pi)}\big[D_{\mathrm{KL}}[q(s\mid o,\pi)\,\|\,q(s\mid\pi)]\big]}_{\text{epistemic value}} \underbrace{-\,\mathbb{E}_{q(o\mid\pi)}[\log p(o\mid C)]}_{\text{pragmatic value}}$$
 >
@@ -322,6 +326,10 @@ This choice of preference is separate from the choice between fixed and sophisti
 > The first line is the one used above, though you will often see its epistemic term written with the expectation over $o$ and $s$ together. Both are correct.
 >
 > The second line says the same thing in terms of how far the expected observations sit from the preferred ones, and how uninformative the sensor is likely to be at the states the policy visits. The third and fourth are where preferences over states appear, and note the sign: the third line is an inequality, so those forms bound $G$ rather than equalling it. 
+>
+> The state-risk expression in this box is distinct from the state-preference score used in our simulations above, which retains expected information gain and replaces the observation-preference cost with a state-preference cost.
+>
+> For the derivation and its assumptions, see Champion et al., [*Reframing the Expected Free Energy: Four Formulations and a Unification*, sections 5.3–6, especially equation (6)](https://arxiv.org/html/2402.14460v1#S6).
 >
 > The second grouping is what most implementations compute, and it is taken up in a later section.
 

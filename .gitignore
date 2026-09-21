@@ -12,6 +12,8 @@ __marimo__/
 
 # Agent tooling 
 .claude/
+.scratch
+tests
 CLAUDE*
 doc
 docs

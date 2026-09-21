@@ -4,7 +4,7 @@
 
 *A* said what each cell looks like; *B* said where each step leads. The agent has read them, trusted them.
 
-That was a choice, and it has been doing a lot of work. Every belief the agent has held was computed from those two tables. Every score it has assigned to a policy was computed from them too. If they are wrong, nothing downstream is worth anything, and the agent has no way of finding out.
+That was a choice, and it has been doing a lot of work. Every belief the agent has held was computed from those two tables. Every score it has assigned to a policy was computed from them too. Errors in those tables can distort inference and planning. Unexpected readings can expose a poor prediction, but the agent so far has no rule for updating the tables themselves.
 
 This page removes that.
 
@@ -12,7 +12,7 @@ This page removes that.
 
 The agent has been uncertain since the first page, but always about the same thing: which cell it occupies. That uncertainty moves. A step spreads it, an observation sharpens it, and it is different at every moment.
 
-That is **state uncertainty**, and the whole tutorial so far has been about it. The new kind of uncertainty we will see is about **parameter uncertainty**, because *A* and *B* are the parameters of the agent's model. They will not longer be fixed and assumed known.
+That is **state uncertainty**, and the whole tutorial so far has been about it. The new kind of uncertainty we will see is about **parameter uncertainty**, because *A* and *B* are the parameters of the agent's model. They will no longer be fixed and assumed known.
 
 Those two behave differently. State uncertainty can be lost and regained: a lost agent becomes less lost by looking and more lost by walking without landmarks. Parameter uncertainty does not move that way. The agent reduces its uncertainty by moving somewhere and looking, and walking away does not make it forget what a cell looks like.
 
@@ -20,18 +20,20 @@ Those two behave differently. State uncertainty can be lost and regained: a lost
 
 Suppose the agent does not know one column of *A*: there is a cell it has no information about.
 
-It can find out by standing there and looking. Seeing lit from that cell is evidence the cell is lit. Seeing it again is more evidence. Seeing dark once in a while is evidence the sensor is unreliable rather than evidence the cell is dark, still it will be considered.
+It can find out by standing there and looking. Seeing lit from that cell is evidence the cell is lit. Seeing it again is more evidence. Seeing dark adds evidence for a higher probability of dark readings from that cell. Learning this column alone does not distinguish sensor noise from a change in the cell itself.
 
 So the agent keeps a count. One number for each state-observation pair, and when it observes $o$ while believing it is at $s$, it adds to the count for that pairing:
 
 $$a \leftarrow a + o \otimes q(s)$$
 
+Here $o$ is the one-hot vector for the reading, $q(s)$ is the state belief after incorporating that reading, and $\otimes$ is the outer product.
+
 Write $a$, in lower case, for the counts, and keep *A* for the observation model the agent plans with. They are different objects: $a$ grows without limit and carries the confidence, *A* is the columns of $a$ normalised. The literature uses the same convention, and it uses $b$ and *B* the same way.
 
-The addition is weighted by the belief, because the agent is not certain where it is. If it is confident it stands at one cell, nearly all of the count lands there. If its belief is spread across four cells, the count is shared among them.
+The addition is weighted by the belief, because the agent is not certain where it is. If it is confident it stands at one cell, nearly all of the count lands there. If its belief is spread across four cells, the count is shared among them. This fractional update is an expected-count approximation. When the state is known, adding one to its column is exact conjugate learning; with an uncertain state, the exact parameter posterior is generally a mixture of Dirichlets rather than a single Dirichlet for each column.
 
 The estimate of *A* is the counts, normalised:
-$$A_{ij} = \frac{a_{ij}}{\sum_i a_{ij}}$$
+$$A_{ij} = \frac{a_{ij}}{\sum_k a_{kj}}$$
 
 where $A_{ij} = p(o = i \mid s = j)$, as in section 1: $i$ the observation, $j$ the state.
 
@@ -52,16 +54,16 @@ That is the property the rest of this page is built on. A column the agent has v
 //FIGURE 1: one column of A, three panels updating together as the reader adds observations one at a time — the raw counts, the normalised estimate, and the novelty value for that column.
 Two starting conditions the reader switches between, with identical normalised estimates and different count magnitudes: a0 = 0.5 and a0 = 100, both at shape [0.2, 0.8].
 Observation stream: lit, lit, dark, lit, lit, lit, dark, lit.
-Verified numbers: at step 0 the small column has novelty 0.330125 and the large 0.004956, a ratio of 66.6. One observation swings the small estimate by 0.1333 and the large by 0.00198, a factor of 67.3. Both start at exactly [0.2, 0.8].
+Verified numbers: at step 0 the small column has novelty 0.330054 and the large 0.004956, a ratio of 66.6. One lit observation swings the small estimate by 0.1333 and the large by 0.00198, a factor of 67.3. Both start at exactly [0.2, 0.8].
 Use the exact Dirichlet KL, never the shortcut — see the note below.//
 
 ## What the counts are, formally
 
-A set of counts specifies a distribution over what the column might be, and that distribution has a name: it is a **Dirichlet**, and the counts are its **concentration parameters**, often called pseudocounts. Other methods can be used as well, but in this lesson, we will use this.
+A set of strictly positive counts specifies a distribution over what the column might be, and that distribution has a name: it is a **Dirichlet**, and the counts are its **concentration parameters**, often called pseudocounts. Even before any data, each possible outcome needs a positive pseudocount. “No observations yet” therefore means a prior, not an all-zero column.
 
  The counts are not the agent's belief about the column. They are the parameters of it. The belief is a distribution over distributions: the agent does not hold one candidate for what the cell looks like, it holds a spread of candidates, and the counts say how wide that spread is.
 
-Why a Dirichlet and not something else: it is the conjugate prior of the categorical distribution, which means that multiplying it by an observation and renormalising gives another Dirichlet. That is what makes the update addition rather than anything harder.
+Why a Dirichlet and not something else: it is the conjugate prior of the categorical distribution, which means that multiplying its density by the categorical likelihood of an observation from a known state and renormalising gives another Dirichlet. That is what makes the update addition rather than anything harder.
 
 The agent could count without any of this, simply tallying what it has seen and normalising, which is close to what tabular reinforcement learning does with state-action pairs. What it would lose is the spread: it would hold an estimate with no measure of how firmly it holds it, and everything later on this page depends on having that measure.
 
@@ -73,7 +75,9 @@ The shape is identical. Take the belief the agent holds about a column now. Take
 
 $$\text{novelty} = \mathbb{E}_{q(s_\tau \mid \pi)\,p(o_\tau \mid s_\tau)}\Big[D_{\mathrm{KL}}\big[\,q(\theta \mid o_\tau, s_\tau) \;\|\; q(\theta)\,\big]\Big]$$
 
-where $\theta$ stands for the array being learned.
+Here $\theta$ denotes the uncertain observation array, with independent Dirichlet beliefs over its columns, and $p(o_\tau\mid s_\tau)$ is the posterior predictive probability obtained from the normalised counts. The calculation assumes the planning belief factors as $q(s_\tau\mid\pi)q(\theta)$.
+
+This is parameter information gain conditional on the hypothetical state. It asks how much the observation would teach us if we knew which column generated it. The actual agent receives only the observation and uses fractional counts when uncertain about its position. The conditional novelty is a planning quantity, not an exact prediction of the KL change produced by that fractional update.
 
 Same operation as the epistemic term, different belief. There, the belief about position. Here, the belief about the model.
 
@@ -85,18 +89,21 @@ Adding 1 to entry $o$ changes only that entry, so the divergence collapses to:
 
 $$\ln\frac{\bar{a}}{a_o} + \psi(a_o + 1) - \psi(\bar{a} + 1)$$
 
-where $\bar{a}$ is the column total and $\psi$ is the digamma function, a standard function available in any numerical library. For present purposes the only property that matters about $\psi(x)$ is that it becomes close to $\ln x$ once $x$ is above about 5, and the gap between them keeps narrowing as $x$ grows. which is what makes the correction term shrink as the counts grow.
+where $\bar{a}=\sum_o a_o$ is the column total and $\psi$ is the digamma function. For a single column, put $p_o=a_o/\bar{a}$ and average over its possible observations:
 
-$$\text{novelty} = H(p) + \sum_o p_o\big[\psi(a_o+1) - \psi(\bar{a}+1)\big]$$
+$$N(a) = H(p) + \sum_o p_o\big[\psi(a_o+1) - \psi(\bar{a}+1)\big]$$
 
+Equivalently, if $\vartheta$ is the uncertain probability vector for this column,
 
-The first term is the entropy of the agent's current estimate of that column. The second is a correction that shrinks as the counts grow.
+$$N(a)=H(p)-\mathbb{E}_{\vartheta\sim\mathrm{Dir}(a)}[H(\vartheta)]$$
 
-So novelty is, near enough, the entropy of what the agent currently thinks, discounted by how much it already knows. With no counts the correction vanishes and novelty is exactly the entropy: the agent stands to learn as much as the column is uncertain. With large counts the two terms nearly cancel and novelty goes to almost nothing: there is little left to learn.
+The first term is the entropy of the agent's predictive distribution. The subtracted term is the average observation entropy within its candidate columns: uncertainty that would remain even if the column were known. Their difference is what one observation can teach it about the column. Policy novelty averages $N(a_{\cdot s})$ over $q(s_\tau\mid\pi)$.
+
+To describe very small counts precisely, write $a=\varepsilon p$ with a fixed positive probability vector $p$. As $\varepsilon\to0^+$, the subtracted term tends to zero and novelty tends to $H(p)$. At exactly zero counts the Dirichlet and its normalised estimate are undefined. As the total grows at fixed $p$, the subtracted term approaches $H(p)$ and novelty tends to zero. It is the difference that shrinks, not the magnitude of the correction.
 
 Two consequences follow:
 
-**Novelty is bounded.** Write $K$ for the number of observations the agent can receive, which here is three: lit, dark, marked. The entropy of a distribution over $K$ outcomes is largest when all of them are equally likely, and it cannot exceed $\ln K$. Since novelty is that entropy less a correction that is never negative, novelty cannot exceed it either.
+**Novelty is bounded.** Write $K$ for the number of observations the agent can receive, which is two in the binary column example and three when the sensor also reports marked. The entropy of a distribution over $K$ outcomes is largest when all of them are equally likely, and it cannot exceed $\ln K$. Since novelty is that entropy less a correction that is never negative, novelty cannot exceed it either.
 
 So knowing that you do not know is worth at most $\ln K$ nats, and no amount of ignorance is worth more. That is a sensible property, and it is not one you would guess from the definition.
 
@@ -104,15 +111,15 @@ So knowing that you do not know is worth at most $\ln K$ nats, and no amount of 
 
 > **A note on the shortcut**
 >
-> Implementations usually compute novelty with
+> A common large-count approximation to the single-observation KL is
 >
-> $> $$W \approx \tfrac{1}{2}\left(\frac{1}{a} - \frac{1}{\bar{a}}\right)$$
+> $$W_o \approx \frac{1}{2}\left(\frac{1}{a_o}-\frac{1}{\bar{a}}\right).$$
 >
-> and this appears in the literature without much comment, usually written with $a_0$ in place of $\bar{a}$, which there means the column total and not the entry at index zero. It is a large-count expansion of the expression above, and it is accurate to within 5% only above $\bar{a} \approx 10$.
+> It follows from $\psi(x+1)=\ln x+1/(2x)+O(x^{-2})$. Its accuracy depends on the individual entries being large, not just the column total. For a uniform binary column at $\bar{a}=10$, the averaged shortcut overstates novelty by about 5.24%; for shape $[0.2,0.8]$ the error is 9.36%, and for $[0.02,0.98]$ it is 89.46%.
 >
-> Below that it fails, and it fails in the region novelty matters most. At $\bar{a} = 0.5$ it overstates by 133%. As counts go to zero it diverges without limit, while the exact form saturates at $\ln K$ as it should. Used carelessly, it turns "the agent knows nothing here" into an unbounded reward for ignorance.
+> At $\bar{a}=0.5$, those errors are about 133%, 203%, and 1201%, respectively. As counts tend to zero at fixed shape, the shortcut diverges, while exact novelty tends to $H(p)\leq\ln K$, reaching $\ln K$ only for a uniform shape.
 >
-> One frequently quoted consequence: a hundredfold novelty ratio between small and large counts. For a uniform column the shortcut reduces to $(K-1)/2\bar{a}$, so its ratio is the count ratio by construction, and the hundredfold is arithmetic rather than a property of novelty. The exact ratio is 66.6 for the column above, 86.3 for a uniform one, and 16.7 for a sharply peaked one. It depends on the shape of the column, which the shortcut cannot see.
+> Averaging the shortcut with $p_o=a_o/\bar{a}$ gives $(K-1)/(2\bar{a})$ for every strictly positive shape. Its ratio between small and large columns is therefore the count ratio by construction: 200 for totals 0.5 and 100. The exact ratio is 66.6 for shape $[0.2,0.8]$, 86.3 for $[0.5,0.5]$, and 16.7 for $[0.02,0.98]$. Exact novelty retains a dependence on shape that this averaged shortcut loses.
 
 ## The third term
 
@@ -120,16 +127,34 @@ Novelty is a number attached to a policy, so it goes into the score.
 
 $G$ had two terms. It now has three:
 
-$$G(\pi, \tau) = \underbrace{-\,\mathbb{E}\big[D_{\mathrm{KL}}[\,q(s_\tau \mid o_\tau, \pi) \,\|\, q(s_\tau \mid \pi)\,]\big]}_{\text{epistemic value}} \; \underbrace{-\,\mathbb{E}\big[D_{\mathrm{KL}}[\,q(\theta \mid o_\tau, s_\tau) \,\|\, q(\theta)\,]\big]}_{\text{novelty}} \; \underbrace{-\,\mathbb{E}_{q(o_\tau \mid \pi)}\big[\log p(o_\tau \mid C)\big]}_{\text{pragmatic value}}$$
+$$G(\pi, \tau) = \underbrace{-\,\mathbb{E}_{q(o_\tau\mid\pi)}\big[D_{\mathrm{KL}}[\,q(s_\tau \mid o_\tau, \pi) \,\|\, q(s_\tau \mid \pi)\,]\big]}_{\text{epistemic value}} \; \underbrace{-\,\mathbb{E}_{q(s_\tau\mid\pi)p(o_\tau\mid s_\tau)}\big[D_{\mathrm{KL}}[\,q(\theta \mid o_\tau, s_\tau) \,\|\, q(\theta)\,]\big]}_{\text{novelty}} \; \underbrace{-\,\mathbb{E}_{q(o_\tau \mid \pi)}\big[\log p(o_\tau \mid C)\big]}_{\text{pragmatic value}}$$
 
 Nothing about the other two has changed. The agent still scores what a policy would deliver and what it would reveal about its position, and now also what it would reveal about its model.
 
 The signs work the same way throughout. A divergence is never negative, so the novelty term is never positive: zero for a policy that would teach the agent nothing about its model, negative for one that would teach it something. Like the epistemic term, it can only lower $G$.
 
-Three terms, three reasons to prefer one policy over another, and the agent adds them up and takes the lowest. Nothing weighs them against each other; they are in the same units because they are all log probabilities, which is what the previous page's note about log space was for.
+Three terms, three reasons to prefer one policy over another, and the agent adds them up and takes the lowest. This score uses a coefficient of one for each term. All are measured in nats, but sharing units does not require equal coefficients or guarantee comparable magnitudes.
 
-One property is worth noting now because it shapes everything the agent does. The epistemic and pragmatic terms depend on where the agent is and where it wants to be, so they change as it moves. Novelty depends on the counts, and the counts only grow. So novelty is largest at the start and declines from there, and an agent carrying all three terms explores early and pursues its preference later, without anyone ordering that sequence.
+As evidence accumulates, familiar columns often offer less to learn. This can favour exploration early and pursuit of preferences later, but it is not a guaranteed sequence. An unexpected observation can increase a column's novelty: adding one count to $[0.01,10]$ to obtain $[1.01,10]$ raises it from 0.004039 to 0.038392 nats. Policy novelty also depends on which columns the policy is predicted to visit, so it changes with the state belief as well as the counts.
 
+
+## Learning where steps lead
+
+For *B*, each column describes a destination state $i$, given an origin $j$ and an action $u$. Keep positive counts $b_{iju}$ and normalise over destinations:
+
+$$B_{iju}=\frac{b_{iju}}{\sum_k b_{kju}}.$$
+
+If both states are known, add one to the entry for the observed transition. When they are uncertain, use their joint posterior after the new reading:
+
+$$b_{iju}\leftarrow b_{iju}+q(s_t=i,s_{t-1}=j\mid o_{1:t},u_{1:t-1}),\qquad u=u_{t-1}.$$
+
+This is again an expected-count approximation. Multiplying separate state marginals is a further approximation: uncertainty about where the agent started and where it ended is generally correlated. Knowing only the destination does not identify which transition column to update.
+
+The analogous conditional novelty treats the origin and destination as known for each hypothetical transition, then averages over predicted transitions. With $\theta_B$ denoting the uncertain transition array,
+
+$$N_B(\pi,\tau)=\mathbb{E}_{q(s_{\tau-1}\mid\pi)B_{s_\tau,s_{\tau-1},u}}\left[D_{\mathrm{KL}}\left[q(\theta_B\mid s_\tau,s_{\tau-1},u)\,\|\,q(\theta_B)\right]\right],\qquad u=u_{\tau-1}.$$
+
+For independent Dirichlet columns and the same factorised planning approximation, this is $\sum_j q(s_{\tau-1}=j\mid\pi)N(b_{\cdot ju})$. The column formula is unchanged, but its outcomes are destination states, so its bound is the logarithm of the number of possible destinations. The four-term planning score subtracts both $N_A$ and $N_B$ alongside the state information gain and adds the pragmatic cost. These conditional parameter scores assume access to hypothetical states; they need not equal the parameter information actually recoverable from noisy sensor readings.
 
 //BEAT 9 — SECOND DEMONSTRATION: LEARNING A AND B TOGETHER
 
@@ -138,18 +163,21 @@ WHAT THIS HAS TO ESTABLISH:
 1. The same machinery handles a second kind of unknown. Four terms, one score,
    no new mechanism.
 
-2. It handles it less well, and the reason is the asymmetry in the prose above.
-   The comparison with the first demonstration is the content of this one.
+2. Test whether learning B is harder than learning A under these conditions.
+   Both endpoints must be inferred for B; measure the effect rather than
+   assuming a performance ordering.
 
 3. The wall is learned, or it is not, and either outcome is worth showing
    honestly. A previous run found the agent never localised well enough to
    learn it at all.
 
-4. The earned leak: once the wall is in the model, being blocked is
-   informative about position. Established in closed form at 0.3197 nats
-   against exactly 0 without it, with belief on the wall cell rising from 0.04
-   to 0.18 from a uniform start. If the live agent never gets there, show the
-   closed-form comparison and label it as potential rather than achieved.
+4. Test whether a learned wall makes the available sensor history more
+   informative about position. The previous 0.3197-nat calculation, with wall-cell
+   belief rising from 0.04 to 0.1814, conditions on knowing that the agent did
+   not move, using B[s,s,u]. That event is not directly observed by this sensor.
+   It is a counterfactual with an additional movement signal, not a verified
+   information gain for the demonstration. Recompute using actual readings and
+   their likelihoods before claiming an earned localisation benefit.
 
 HOW:
 
@@ -157,37 +185,37 @@ World: as the first demonstration, plus walls in the works corner. Several,
 not one, or the effect is anecdotal.
 CONSTRAINTS: the walls must not enclose any cell, or novelty there never
 resolves and the demonstration has no ending. They must sit away from both
-lamps, since a wall next to one lamp and not the other would let the agent
-separate the two candidates by which steps succeed, which is a resolution the
-previous page never had.
+lamps to avoid an immediate local asymmetry in predicted sensor histories.
+Distance alone does not guarantee that longer observation histories cannot
+distinguish the lamps. Check any claimed symmetry in the full model.
 
 Both A and B learned, on the same run, at every step.
 
 READER CONTROL: how much of B is unknown, always starting from the same
-corner, spanning the same two conditions as before — no counts, and confident
+corner, spanning two conditions — small positive prior counts, and confident
 counts from the old layout.
 
 Runs to show:
 — A and B error against time, side by side. Claim 2 is whether B lags A, and
   by how much.
 — all four terms of G through the run.
-— a blocked step, shown as what the agent actually receives, which is the same
-  observation again.
-— the earned leak, as a before-and-after comparison of what a blocked step
-  tells the agent with and without the wall in its model.
+— a blocked step, showing the actual noisy sensor reading. Staying in the same
+  cell need not repeat the reading, and a repeated reading does not prove a block.
+— any earned localisation benefit, comparing inference from the same available
+  sensor history with and without the wall in the model.
 
 TO VERIFY RATHER THAN ASSUME:
 — whether B converges at all in a run of reasonable length. A previous pass
-  found it diverging monotonically, with the cause isolated to state-inference
-  error rather than the update rule: under an oracle that supplied the true
-  position, both arrays converged cleanly. If that holds with the pragmatic
-  term restored, the honest figure is the oracle comparison, labelled as such,
+  found it diverging monotonically, while an oracle that supplied the true
+  position allowed both arrays to converge cleanly. This does not by itself
+  validate the uncertain-state update; check joint transition beliefs as well.
+  If that holds with the pragmatic term restored, the honest figure is the oracle comparison, labelled as such,
   and the prose says B does not converge here and why.
 — whether novelty over B dominates the score. If it does, check whether the
   cause is the prior admitting implausible destinations before reaching for a
   precision term.
-— whether the confident-and-wrong condition is inert for B as it is for A.
-  Expect yes, same cause.
+— whether large, incorrect prior counts slow learning for B as for A. Low
+  novelty does not prevent correction when contradictory evidence is collected.
 — whether the agent ever learns the wall.
 
 Report what happens. Do not tune the world to produce a clean run. A
@@ -203,4 +231,4 @@ Nothing was added to make it curious about its model. The novelty term was not i
 
 That is the claim this page was built to make. There are two things an agent can fail to know, and the framework does not treat them as different problems. It writes down what it does not know, scores actions by how much of that they would resolve, and lets the arithmetic decide what to do first.
 
-What it does not give the agent is any sense of being wrong. Novelty is a function of the counts, and the counts say how much the agent has seen, not whether what it concluded was correct. An agent that has looked a hundred times and drawn the wrong conclusion has no more reason to look again than one that was right. Correcting that requires something this page does not contain.
+Novelty does not directly measure whether the model is wrong. Identical counts give identical novelty whether or not they describe the world accurately. Large counts can therefore make a mistaken column look unpromising to revisit. Contradictory observations can still correct finite counts through the updates already given, provided the agent gathers evidence and assigns it to the relevant states. What this page does not provide is a dedicated mechanism for detecting a changed world or discounting old evidence.
