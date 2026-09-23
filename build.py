@@ -10,6 +10,7 @@ points for site-src/widgets.js. Nothing runs Python in the browser.
 import re
 import shutil
 import sys
+import hashlib
 from pathlib import Path
 
 import markdown
@@ -17,6 +18,7 @@ import markdown
 ROOT = Path(__file__).parent
 CONTENT = ROOT / "content"
 SITE_SRC = ROOT / "site-src"
+INDEX_PAGE = CONTENT / "index_page.md"
 
 # (slug, markdown path). The slug is the output file name and the URL.
 PAGES = [
@@ -24,6 +26,7 @@ PAGES = [
     ("lesson-2", CONTENT / "lesson-2.md"),
     ("lesson-3", CONTENT / "lesson-3.md"),
     ("lesson-4", CONTENT / "lesson-4.md"),
+    ("lesson-5", CONTENT / "lesson-5.md"),
 ]
 
 
@@ -145,7 +148,7 @@ PAGE_SHELL = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
-<link rel="stylesheet" href="page.css">
+<link rel="stylesheet" href="page.css?v={version}">
 <link rel="stylesheet" href="katex/katex.min.css">
 </head>
 <body>
@@ -160,12 +163,27 @@ PAGE_SHELL = """<!doctype html>
       {{left: '$', right: '$', display: false}}
     ]
   }})"></script>
-<script type="module" src="aif.js"></script>
-<script type="module" src="widget.js"></script>
-<script type="module" src="{slug}.js"></script>
+<script type="module" src="aif.js?v={version}"></script>
+<script type="module" src="widget.js?v={version}"></script>
+<script type="module" src="{slug}.js?v={version}"></script>
 </body>
 </html>
 """
+
+
+def asset_version(slug):
+    assets = [SITE_SRC / "page.css", SITE_SRC / "aif.js",
+              SITE_SRC / "widget.js", SITE_SRC / f"{slug}.js"]
+    if slug == "lesson-4":
+        assets.append(SITE_SRC / "agent-comparison.js")
+    if slug == "lesson-5":
+        assets.extend([SITE_SRC / "lesson-5-data.js",
+                       SITE_SRC / "lesson-5-b-data.js",
+                       SITE_SRC / "lesson-5-joint-data.js"])
+    digest = hashlib.sha256()
+    for asset in assets:
+        digest.update(asset.read_bytes())
+    return digest.hexdigest()[:12]
 
 
 def build_page(slug, md_path, out_dir):
@@ -173,20 +191,59 @@ def build_page(slug, md_path, out_dir):
     html = render_markdown(text)
     html = render_figures(html, out_dir)
     html = render_widgets(html)
-    page = PAGE_SHELL.format(title=first_heading(text), body=html, slug=slug)
+    version = asset_version(slug)
+    page = PAGE_SHELL.format(title=first_heading(text), body=html, slug=slug,
+                             version=version)
     (out_dir / f"{slug}.html").write_text(page)
+
+
+def build_index(out_dir):
+    """Render the Markdown introduction into the existing homepage shell."""
+    text = INDEX_PAGE.read_text()
+    body = render_widgets(render_figures(render_markdown(text), out_dir))
+    template = (ROOT / "index.html").read_text()
+    body_start = template.index("<main>") + len("<main>")
+    rest_start = template.index('<div class="note">')
+    page = template[:body_start] + "\n" + body + "\n\n  " + template[rest_start:]
+    (out_dir / "index.html").write_text(page)
 
 
 def copy_assets(out_dir):
     names = ["page.css", "aif.js", "widget.js", "agent-comparison.js",
              "agent-comparison-data.js", "figure6-curves.js",
-             "figure6-curves-data.js"] + [f"{slug}.js" for slug, _ in PAGES]
+             "figure6-curves-data.js", "lesson-5-data.js",
+             "lesson-5-b-data.js", "lesson-5-joint-data.js"] + [f"{slug}.js" for slug, _ in PAGES]
     for name in names:
         shutil.copy(SITE_SRC / name, out_dir / name)
+    lesson_4_js = out_dir / "lesson-4.js"
+    comparison_version = hashlib.sha256(
+        (SITE_SRC / "agent-comparison.js").read_bytes()
+    ).hexdigest()[:12]
+    lesson_4_js.write_text(lesson_4_js.read_text().replace(
+        "./agent-comparison.js", f"./agent-comparison.js?v={comparison_version}"
+    ))
+    lesson_5_js = out_dir / "lesson-5.js"
+    data_version = hashlib.sha256(
+        (SITE_SRC / "lesson-5-data.js").read_bytes()
+    ).hexdigest()[:12]
+    lesson_5_js.write_text(lesson_5_js.read_text().replace(
+        "./lesson-5-data.js", f"./lesson-5-data.js?v={data_version}"
+    ))
+    b_data_version = hashlib.sha256(
+        (SITE_SRC / "lesson-5-b-data.js").read_bytes()
+    ).hexdigest()[:12]
+    lesson_5_js.write_text(lesson_5_js.read_text().replace(
+        "./lesson-5-b-data.js", f"./lesson-5-b-data.js?v={b_data_version}"
+    ))
+    joint_data_version = hashlib.sha256(
+        (SITE_SRC / "lesson-5-joint-data.js").read_bytes()
+    ).hexdigest()[:12]
+    lesson_5_js.write_text(lesson_5_js.read_text().replace(
+        "./lesson-5-joint-data.js", f"./lesson-5-joint-data.js?v={joint_data_version}"
+    ))
     katex_src = SITE_SRC / "katex"
     if katex_src.exists():
         shutil.copytree(katex_src, out_dir / "katex")
-    shutil.copy(ROOT / "index.html", out_dir / "index.html")
     (out_dir / ".nojekyll").touch()
 
 
@@ -198,6 +255,8 @@ def main(out_dir="site"):
     for slug, md_path in PAGES:
         print(f"--- building {md_path.name} -> {out}/{slug}.html")
         build_page(slug, md_path, out)
+    print(f"--- building {INDEX_PAGE.name} -> {out}/index.html")
+    build_index(out)
     copy_assets(out)
     size = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
     print(f"--- built {out} ({size / 1e6:.1f} MB)")

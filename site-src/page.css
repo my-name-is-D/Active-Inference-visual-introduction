@@ -1,7 +1,7 @@
 /* Deliberately light only: the matplotlib figures and canvas widgets are
    drawn on white, so a dark page turns them into glaring rectangles. A
    reader who wants dark can use a browser reader mode or extension. */
-:root { --ink:#1a1a1a; --dim:#5a5a5a; --rule:#d8d8d8; --bg:#fdfdfc; --accent:#1f6f5c; color-scheme:light; }
+:root { --ink:#1a1a1a; --dim:#5a5a5a; --rule:#d8d8d8; --bg:#fdfdfc; --accent:#1f6f5c; --lit:#ffdb58; --lit-edge:#8a6d0b; --dark:#111; color-scheme:light; }
 * { box-sizing: border-box; }
 body {
   margin:0; background:var(--bg); color:var(--ink);
@@ -87,6 +87,13 @@ summary { cursor:pointer; color:var(--accent); font-weight:600; }
 .walk-control { display:flex; flex-direction:column; gap:.25rem; min-width:13rem; font-weight:650; }
 .walk-control select { font:inherit; padding:.35rem; border:1px solid var(--rule); background:white; max-width:100%; }
 .walk-status { font-weight:650; margin:.45rem 0 .75rem; }
+.walk-agents { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:1.2rem; }
+.walk-agents .walk-panel-head { flex-direction:column; align-items:stretch; gap:.35rem; }
+.walk-agents .walk-panel-head select { min-width:0; max-width:100%; width:100%; }
+.walk-action-values { display:table; width:100%; border-collapse:collapse; margin:.7rem 0; table-layout:fixed; }
+.walk-action-values caption { text-align:left; margin-bottom:.4rem; }
+.walk-action-values th, .walk-action-values td { text-align:center; padding:.4rem .1rem; border-bottom:1px solid var(--rule); font-variant-numeric:tabular-nums; }
+@media (max-width:480px) { .walk-agents { grid-template-columns:1fr; } }
 .walk-agent-panel { border-top:1px solid var(--rule); padding:.9rem 0 1.2rem; }
 .walk-panel-head { display:flex; justify-content:space-between; align-items:center; gap:1rem; font-weight:700; }
 .walk-panel-head select { font:inherit; padding:.3rem; min-width:13rem; max-width:65%; }
@@ -102,6 +109,8 @@ summary { cursor:pointer; color:var(--accent); font-weight:600; }
 .walk-details { margin:.7rem 0 0; padding:.4rem 0 .2rem .7rem; font-size:.9rem; }
 .walk-details p { margin:.5rem 0; }
 .walk-prediction { margin:.7rem 0; }
+.walk-prediction canvas { display:block; width:calc((100% - 1.2rem) / 2); margin:0 auto; }
+@media (max-width:480px) { .walk-prediction canvas { width:100%; } }
 .walk-prediction strong { display:block; margin-bottom:.3rem; }
 @media(max-width:560px) {
   .walk-panel-head select { min-width:0; max-width:60%; }
@@ -120,3 +129,73 @@ hr { border:none; border-top:1px solid var(--rule); margin:2.5rem 0; }
    container rather than letting the whole page scroll sideways on a phone. */
 .katex-display { overflow-x: auto; overflow-y: hidden; padding-bottom: .3rem; }
 table { display: block; overflow-x: auto; max-width: 100%; }
+
+.smoothing-widget { font:14px/1.5 system-ui,sans-serif; }
+.smoothing-controls { display:flex; flex-wrap:wrap; gap:.8rem 1.2rem; }
+.smoothing-controls label { display:flex; flex-direction:column; gap:.3rem; font-weight:600; }
+.smoothing-controls select { font:inherit; padding:.4rem; max-width:100%; }
+.smoothing-controls .smoothing-toggle { flex-direction:row; align-items:center; }
+.smoothing-toggle input { width:1.2rem; height:1.2rem; }
+.outer-product { max-width:560px; margin:.4rem auto 1rem; padding:.2rem .5rem; }
+.outer-product svg { display:block; width:100%; height:auto; }
+.confidence-widget { font:14px/1.5 system-ui,sans-serif; }
+.confidence-stream { display:flex; gap:.35rem; flex-wrap:wrap; margin:1rem 0; }
+.confidence-stream span { padding:.2rem .45rem; border:1px solid var(--rule); border-radius:3px; color:var(--dim); }
+.confidence-stream span.used { color:#fff; border-color:transparent; }
+.confidence-stream span.dark.used { background:var(--dark); }
+.confidence-stream span.lit.used { background:var(--lit); color:var(--ink); border-color:var(--lit-edge); }
+.confidence-panels { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.7rem; margin:1rem 0; }
+.confidence-panel { min-width:0; padding:.75rem; border:1px solid var(--rule); border-radius:3px; }
+.confidence-panel h3 { margin:0 0 .8rem; font-size:.95rem; }
+.confidence-panel p { margin:.75rem 0 0; font-size:.83rem; color:var(--dim); font-variant-numeric:tabular-nums; }
+.confidence-bar-row { display:grid; grid-template-columns:2.6rem 1fr 2.2rem; gap:.35rem; align-items:center; margin:.45rem 0; }
+.confidence-bar-track { height:.8rem; background:#eeeeea; }
+.confidence-bar-fill { display:block; min-width:2px; height:100%; }
+.confidence-bar-row strong { text-align:right; font-size:.8rem; font-variant-numeric:tabular-nums; }
+.confidence-stack { display:flex; height:2rem; overflow:hidden; border-radius:2px; }
+.confidence-stack .dark { background:var(--dark); }
+.confidence-stack .lit { background:var(--lit); }
+.confidence-novelty-track { height:2rem; background:#eeeeea; border-radius:2px; overflow:hidden; }
+.confidence-novelty-track span { display:block; height:100%; background:#19775e; min-width:1px; }
+.confidence-buttons { margin:.6rem 0; }
+.confidence-buttons button:disabled { opacity:.45; }
+.novelty-branches-widget { max-width:620px; margin:1rem auto; font:14px/1.5 system-ui,sans-serif; }
+.novelty-branches-widget select { font:inherit; padding:.35rem; margin-bottom:.6rem; }
+.novelty-flow { display:grid; gap:.55rem; text-align:center; font-variant-numeric:tabular-nums; }
+.novelty-current, .novelty-result, .novelty-options div { padding:.65rem; border:1px solid var(--rule); border-radius:3px; }
+.novelty-current, .novelty-result, .novelty-options div { display:grid; gap:.2rem; }
+.novelty-question { color:var(--dim); font-weight:600; }
+.novelty-options { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; }
+.novelty-options .dark { border-left:5px solid var(--dark); }
+.novelty-options .lit { border-left:5px solid var(--lit); }
+.novelty-result { background:#eef5f1; border-color:#19775e; font-weight:600; }
+.smoothing-counts-widget { max-width:760px; margin:1rem auto; font:14px/1.5 system-ui,sans-serif; }
+.smoothing-counts-widget > label { display:flex; flex-direction:column; gap:.3rem; font-weight:600; }
+.smoothing-counts-widget select { align-self:flex-start; font:inherit; padding:.35rem; }
+.smoothing-count-calculation { display:flex; align-items:center; justify-content:center; gap:.55rem; margin:1rem 0; overflow-x:auto; }
+.smoothing-count-calculation > b { font-size:1.35rem; }
+.smoothing-count-factor { flex:0 0 auto; text-align:center; }
+.smoothing-count-factor strong { display:block; margin-bottom:.3rem; font-size:.82rem; }
+.smoothing-count-factor table { display:table; margin:0; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.smoothing-count-factor th, .smoothing-count-factor td { min-width:3.2rem; padding:.35rem .45rem; border:1px solid var(--rule); text-align:center; }
+.smoothing-count-factor .row-label { min-width:auto; padding:.35rem .4rem .35rem 0; border:0; text-align:right; font-weight:400; color:var(--dim); }
+.smoothing-a-chart { max-width:720px; margin:auto; }
+.smoothing-a-chart svg { width:100%; height:auto; }
+.smoothing-key { display:flex; flex-wrap:wrap; justify-content:center; gap:.4rem; margin:.7rem 0; }
+.smoothing-key span { padding:.3rem .55rem; border:1px solid var(--rule); border-radius:3px; background:#f5f5f1; font-size:.82rem; }
+.smoothing-maps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; margin:.5rem 0 1rem; }
+.smoothing-maps svg { width:100%; height:auto; }
+.smoothing-step { display:block; }
+.smoothing-step input { display:block; width:100%; }
+.smoothing-readout { padding:.7rem; background:#eef5f1; border-left:3px solid #19775e; }
+.smoothing-note { color:var(--dim); font-size:.9rem; }
+.b-diagnostic { margin-top:1.4rem; padding-top:1rem; border-top:1px solid #d8d8d2; }
+.b-diagnostic h3 { margin:0 0 .25rem; font-size:1rem; }
+.b-diagnostic p { margin:.25rem 0; color:var(--dim); font-size:.9rem; }
+.b-collapse { max-width:520px; margin:1rem auto 0; }
+.b-collapse svg { width:100%; height:auto; }
+.joint-learning-charts { display:grid; grid-template-columns:1fr; gap:1rem; max-width:760px; margin:auto; }
+.joint-learning-charts svg { display:block; width:100%; height:auto; }
+@media(max-width:620px) {
+  .smoothing-maps, .confidence-panels, .novelty-options { grid-template-columns:1fr; }
+}

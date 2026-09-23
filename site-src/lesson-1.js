@@ -13,7 +13,6 @@ import {
   drawBeliefBar,
   drawIsoPlane,
   drawMatrix,
-  autoplay,
   oneHot,
   lampBeliefs,
   obsColour,
@@ -27,8 +26,6 @@ import {
   AGENT_TILE,
   SEQUENCE,
   A_LAMP,
-  MX,
-  MCELL,
 } from "./widget.js";
 import { uniformBelief, update } from "./aif.js";
 
@@ -363,8 +360,8 @@ mount("belief-bars", (el) => {
         // distribution over cells, so it shares no mass with the other three.
         // Saying so stops the reader reading equal bar heights as equal values.
         ["o  likelihood", likelihood, 1, oc, [
-          `row A[${obsName(obs)}]: ${A_LAMP[obs][LIT_TILES[0]].toFixed(2)} on lit, ` +
-          `${A_LAMP[obs][darkCell].toFixed(2)} on dark`,
+          `row A[${obsName(obs)}]:`,
+          `${A_LAMP[obs][LIT_TILES[0]].toFixed(2)} on lit, ${A_LAMP[obs][darkCell].toFixed(2)} on dark`,
         ]],
         ["=  unnormalised", unnormalised, distScale, neutral, [`total ${evidence.toFixed(3)}`]],
         ["posterior", posterior, distScale, neutral, ["total 1.000"]],
@@ -373,7 +370,7 @@ mount("belief-bars", (el) => {
     rows.forEach(([name, values, scale, colourFn, notes], i) => {
       const y = 20 + i * ROW_H;
       label(ctx, name, 8, y + 12, COLOUR.ink);
-      notes.forEach((note, j) => label(ctx, note, 8, y + 28 + j * 15));
+      notes.forEach((note, j) => label(ctx, note, 8, y + 28 + j * 15, COLOUR.dim, 14));
       bars(values, y, scale, colourFn);
     });
 
@@ -437,71 +434,87 @@ mount("belief-bars", (el) => {
 // --- a-columns -------------------------------------------------------------
 // Figure: A-matrix columns, p(o | s) for a fixed state (content/lesson-1.md,
 // "Read a column..." / the false-reading-rate paragraph before <widget a-columns>).
-// Sweeps the columns. Each one is a distribution over the two observations and
-// fills its bar to exactly one, which is the column rule made visible.
+// Hovering a column connects it to the same cell in the world. Each column is
+// a distribution over the two observations and fills its bar to exactly one.
 mount("a-columns", (el) => {
-  const W = 1100;
-  const H = 680;
+  const W = 700;
+  const H = 550;
   const ctx = ctxOf(el, W, H);
   if (!ctx) return;
   const GRID_CELL = 40;
   const GRID_Y = 40;
   const GRID_X = 16;
+  const MATRIX_CELL = 25;
+  const MATRIX_X = 60;
+  const matrixTop = GRID_Y + 5 * GRID_CELL + 66;
+  let hover = null;
 
-  function step(i, done = false) {
+  function draw() {
     ctx.clearRect(0, 0, W, H);
     label(ctx, "the grid, with every cell's index", GRID_X, GRID_Y - 12, COLOUR.ink, 20);
-    drawGrid(ctx, GRID_X, GRID_Y, GRID_CELL, { mark: done ? null : i, showIds: true });
+    drawGrid(ctx, GRID_X, GRID_Y, GRID_CELL, { mark: hover, showIds: true });
 
-    const matrixTop = GRID_Y + 5 * GRID_CELL + 66;
-    label(ctx, "A: what the world would show, one column per cell", 16, matrixTop - 40, COLOUR.ink,20);
-    drawMatrix(ctx, { markCol: done ? null : i, x: MX, y: matrixTop });
+    label(ctx, "A: what the world would show, one column per cell", 16, matrixTop - 40, COLOUR.ink, 20);
+    drawMatrix(ctx, { markCol: hover, x: MATRIX_X, y: matrixTop, cell: MATRIX_CELL });
 
-    // The per-column readout stays on screen whether or not the sweep is
-    // still running: replay resets it to column 0, it never goes blank. This
-    // text was unreadably small next to the enlarged matrix; it now matches
-    // scale, several sizes up from the page's normal caption text.
-    const col = done ? N - 1 : i;
+    const ty = matrixTop + 2 * MATRIX_CELL + 50;
+    const RSIZE = 18;
+    if (hover === null) {
+      label(ctx, "Hover a matrix column or a numbered grid cell to connect the two.", 16, ty, COLOUR.dim, RSIZE);
+      label(ctx, "Every column contains the two readings possible at that cell.", 16, ty + 34, COLOUR.dim, RSIZE);
+      return;
+    }
+    const col = hover;
     const isLit = LIT_MASK[col];
-    const ty = matrixTop + 2 * MCELL + 56;
-    const RSIZE = 22;
     label(ctx, `column ${col}: a ${isLit ? "lit" : "dark"} cell`, 16, ty, COLOUR.ink, RSIZE);
     label(ctx, `p(dark | cell ${col}) = ${A_LAMP[DARK][col].toFixed(2)}`, 16, ty + 34, COLOUR.ink, RSIZE);
     label(ctx, `p(lit  | cell ${col}) = ${A_LAMP[LIT][col].toFixed(2)}`, 16, ty + 64, COLOUR.ink, RSIZE);
     label(ctx, "dark + lit, every column, always one", 16, ty + 100, COLOUR.ink, RSIZE);
-
-    if (done) {
-      label(ctx, "every column sums to one: stand anywhere and you see something", 16, ty + 140, COLOUR.ink, RSIZE);
-      label(ctx, "three columns read [0.2, 0.8], the other twenty-two read [0.9, 0.1]", 16, ty + 172, COLOUR.dim, RSIZE);
-    }
   }
-  autoplay(el, step, N, 420);
+
+  ctx.canvas.addEventListener("mousemove", (e) => {
+    const rect = ctx.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * ctx.canvas.width / rect.width;
+    const y = (e.clientY - rect.top) * ctx.canvas.height / rect.height;
+    let next = null;
+    if (x >= MATRIX_X && x < MATRIX_X + N * MATRIX_CELL && y >= matrixTop && y < matrixTop + 2 * MATRIX_CELL) {
+      next = Math.floor((x - MATRIX_X) / MATRIX_CELL);
+    } else if (x >= GRID_X && x < GRID_X + 5 * GRID_CELL && y >= GRID_Y && y < GRID_Y + 5 * GRID_CELL) {
+      next = Math.floor((y - GRID_Y) / GRID_CELL) * 5 + Math.floor((x - GRID_X) / GRID_CELL);
+    }
+    if (next !== hover) { hover = next; draw(); }
+  });
+  ctx.canvas.addEventListener("mouseleave", () => { hover = null; draw(); });
+  draw();
 });
 
 // --- a-rows ----------------------------------------------------------------
 // Figure: A-matrix rows, p(o | s) for a fixed observation (content/lesson-1.md,
 // "Now it reads A in the other direction..." before <widget a-rows>).
-// The same table swept the other way. The running total passes one and keeps
-// going, which is the whole point: rows are scores, not distributions.
+// Hovering across the lit row exposes its running total. It passes one and
+// keeps going, which is the whole point: rows are scores, not distributions.
 mount("a-rows", (el) => {
-  const W = 1100;
-  const H = 380;
+  const W = 700;
+  const H = 350;
   const ctx = ctxOf(el, W, H);
   if (!ctx) return;
+  const MATRIX_CELL = 25;
+  const MATRIX_X = 60;
   const matrixTop = 90;
+  let hover = null;
 
-  function step(i, done = false) {
+  function draw() {
     ctx.clearRect(0, 0, W, H);
     label(ctx, "the same A, read across the lit row", 16, matrixTop - 42, COLOUR.ink, 20);
-    drawMatrix(ctx, { markRow: LIT, upTo: done ? null : i, markCol: done ? null : i, y: matrixTop });
+    drawMatrix(ctx, { markRow: LIT, markCol: hover, x: MATRIX_X, y: matrixTop, cell: MATRIX_CELL });
 
     // Same readout size as a-columns (RSIZE = 22), so the two images read as
     // one matched pair rather than one full-size and one shrunk.
-    const RSIZE = 22;
-    const ty = matrixTop + 2 * MCELL + 56;
-    const running = A_LAMP[LIT].slice(0, i + 1).reduce((a, b) => a + b, 0);
-    if (!done) {
-      label(ctx, `added cell ${i}: ${A_LAMP[LIT][i].toFixed(2)}`, 16, ty, COLOUR.ink, RSIZE);
+    const RSIZE = 18;
+    const ty = matrixTop + 2 * MATRIX_CELL + 50;
+    if (hover !== null) {
+      const running = A_LAMP[LIT].slice(0, hover + 1).reduce((a, b) => a + b, 0);
+      label(ctx, `through cell ${hover}: add ${A_LAMP[LIT][hover].toFixed(2)}`, 16, ty, COLOUR.ink, RSIZE);
       label(ctx, `running total ${running.toFixed(1)}`, 16, ty + 32, running > 1 ? COLOUR.agent : COLOUR.ink, RSIZE);
       // The total as a bar, with the one mark it sails past.
       const sx = 16;
@@ -522,11 +535,21 @@ mount("a-rows", (el) => {
     } else {
       label(ctx, `the lit row adds to ${A_LAMP[LIT].reduce((a, b) => a + b, 0).toFixed(1)}`, 16, ty, COLOUR.ink, RSIZE);
       label(ctx, `the dark row adds to ${A_LAMP[DARK].reduce((a, b) => a + b, 0).toFixed(1)}`, 16, ty + 32, COLOUR.ink, RSIZE);
-      label(ctx, "neither is one, and nothing requires them to be:", 16, ty + 68, COLOUR.ink, RSIZE);
-      label(ctx, "a row is a score per cell, answering separate questions about separate cells", 16, ty + 96, COLOUR.dim, RSIZE);
+      label(ctx, "Hover a cell in the lit row to total the row up to that point.", 16, ty + 68, COLOUR.dim, RSIZE);
     }
   }
-  autoplay(el, step, N, 240);
+
+  ctx.canvas.addEventListener("mousemove", (e) => {
+    const rect = ctx.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * ctx.canvas.width / rect.width;
+    const y = (e.clientY - rect.top) * ctx.canvas.height / rect.height;
+    const next = x >= MATRIX_X && x < MATRIX_X + N * MATRIX_CELL &&
+      y >= matrixTop + LIT * MATRIX_CELL && y < matrixTop + (LIT + 1) * MATRIX_CELL
+      ? Math.floor((x - MATRIX_X) / MATRIX_CELL) : null;
+    if (next !== hover) { hover = next; draw(); }
+  });
+  ctx.canvas.addEventListener("mouseleave", () => { hover = null; draw(); });
+  draw();
 });
 
 // --- sequence-stepper ------------------------------------------------------

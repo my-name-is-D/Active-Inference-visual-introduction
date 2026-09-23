@@ -317,8 +317,7 @@ export function label(ctx, text, x, y, colour = COLOUR.dim, size = 16, align = "
 
 // Shared matrix drawing for a-columns and a-rows. Rows are observations in the
 // order [dark, lit]; columns are cells. Cells take their observation's colour,
-// with opacity standing for the probability. MX/MY are the default origin;
-// a-columns overrides y to sit the matrix under its own grid.
+// with opacity standing for the probability.
 export const MX = 70;
 export const MY = 90;
 export const MCELL = 40;
@@ -326,12 +325,12 @@ export const MCELL = 40;
 // The A matrix, drawn with axes: a cell index above every column, "dark"/"lit"
 // row labels on the left, and the probability printed on each cell, large and
 // white with a dark outline so it reads against both the dark and lit fills.
-export function drawMatrix(ctx, { markCol = null, markRow = null, upTo = null, x = MX, y = MY } = {}) {
-  ctx.font = "14px system-ui, sans-serif";
+export function drawMatrix(ctx, { markCol = null, markRow = null, upTo = null, x = MX, y = MY, cell = MCELL } = {}) {
+  ctx.font = `${Math.max(10, Math.round(cell * 0.35))}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   for (let s = 0; s < N; s++) {
     ctx.fillStyle = COLOUR.dim;
-    ctx.fillText(String(s), x + s * MCELL + MCELL / 2, y - 16);
+    ctx.fillText(String(s), x + s * cell + cell / 2, y - 10);
   }
   for (let o = 0; o < 2; o++) {
     for (let s = 0; s < N; s++) {
@@ -339,23 +338,21 @@ export function drawMatrix(ctx, { markCol = null, markRow = null, upTo = null, x
       const dim = upTo !== null && markRow === o && s > upTo;
       ctx.globalAlpha = dim ? 0.12 : 0.25 + 0.75 * v;
       ctx.fillStyle = obsColour(o);
-      ctx.fillRect(x + s * MCELL, y + o * MCELL, MCELL - 1, MCELL - 1);
+      ctx.fillRect(x + s * cell, y + o * cell, cell - 1, cell - 1);
       ctx.globalAlpha = 1;
       if (o === LIT) {
         ctx.strokeStyle = COLOUR.litEdge;
         ctx.globalAlpha = dim ? 0.2 : 0.6;
         ctx.lineWidth = 1;
-        ctx.strokeRect(x + s * MCELL + 0.5, y + o * MCELL + 0.5, MCELL - 2, MCELL - 2);
+        ctx.strokeRect(x + s * cell + 0.5, y + o * cell + 0.5, cell - 2, cell - 2);
         ctx.globalAlpha = 1;
       }
       if (!dim) {
-        const cx = x + s * MCELL + MCELL / 2;
-        const cy = y + o * MCELL + MCELL / 2;
-        ctx.font = "bold 15px system-ui, sans-serif";
+        const cx = x + s * cell + cell / 2;
+        const cy = y + o * cell + cell / 2;
+        ctx.font = `bold ${Math.max(11, Math.round(cell * 0.4))}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        // A dark outline under white fill reads on every cell colour, from
-        // near-black (p=0.9 dark) through pale cream (p=0.1 dark).
         ctx.lineWidth = 3;
         ctx.strokeStyle = "rgba(0,0,0,0.55)";
         ctx.strokeText(v.toFixed(1), cx, cy);
@@ -366,18 +363,18 @@ export function drawMatrix(ctx, { markCol = null, markRow = null, upTo = null, x
     }
   }
   ctx.textAlign = "left";
-  label(ctx, "dark", x - 46, y + MCELL / 2 + 4, COLOUR.ink);
-  label(ctx, "lit", x - 46, y + MCELL + MCELL / 2 + 4, COLOUR.ink);
-  label(ctx, "cell (column) index, 0 to 24", x, y + 2 * MCELL + 22);
+  label(ctx, "dark", x - 46, y + cell / 2 + 4, COLOUR.ink);
+  label(ctx, "lit", x - 46, y + cell + cell / 2 + 4, COLOUR.ink);
+  label(ctx, "cell (column) index, 0 to 24", x, y + 2 * cell + 22);
   if (markCol !== null) {
     ctx.strokeStyle = COLOUR.agent;
     ctx.lineWidth = 2;
-    ctx.strokeRect(x + markCol * MCELL - 1, y - 1, MCELL + 1, 2 * MCELL + 1);
+    ctx.strokeRect(x + markCol * cell - 1, y - 1, cell + 1, 2 * cell + 1);
   }
   if (markRow !== null) {
     ctx.strokeStyle = COLOUR.agent;
     ctx.lineWidth = 2;
-    ctx.strokeRect(x - 1, y + markRow * MCELL - 1, N * MCELL + 1, MCELL + 1);
+    ctx.strokeRect(x - 1, y + markRow * cell - 1, N * cell + 1, cell + 1);
   }
 }
 
