@@ -6,7 +6,7 @@
 
 That was a choice, and it has been doing a lot of work. Every belief the agent has held was computed from those two tables. Every score it has assigned to a policy was computed from them too. Errors in those tables can distort inference and planning. Unexpected observations can expose a poor prediction, but the agent so far has no rule for updating the tables themselves.
 
-This page removes that.
+This module removes that.
 
 Learning the two tables does not pose the same problem. To learn *A*, the agent must work out what it sees at a place. To learn *B*, it must work out both where a step began and where it ended. But *B* is also what carries its position belief through that step. Learning *B* therefore depends on localisation, while localisation already depends on *B*.
 
@@ -20,7 +20,7 @@ And we will introduce two new changes in the world, a part of the world in under
 
 ## Two kinds of not knowing
 
-The agent has been uncertain since the first page, but always about the same thing: which cell it occupies. A step spreads this uncertainty, an observation sharpens it, and it is different at every moment.
+The agent has been uncertain since the first module, but always about the same thing: which cell it occupies. A step spreads this uncertainty, an observation sharpens it, and it is different at every moment.
 
 That is **state uncertainty**, and the whole tutorial so far has been about it. The new kind of uncertainty we will see is about **parameter uncertainty**, because *A* and *B* are the parameters of the agent's model. They will no longer be fixed and assumed known.
 
@@ -51,7 +51,7 @@ The addition is weighted by the belief, because the agent is not certain where i
 The estimate of *A* is the counts, normalised:
 $$A_{ij} = \frac{a_{ij}}{\sum_k a_{kj}}$$
 
-where $A_{ij} = p(o = i \mid s = j)$, as in page 1: $i$ the observation, $j$ the state.
+where $A_{ij} = p(o = i \mid s = j)$, as in module 1: $i$ the observation, $j$ the state.
 
 The loop is **predict → move →see → update**. For the chosen action, the agent first predicts where it will be and what it may observe, using its current *A* and *B*. It executes the action and receives the observation. Only then does it update its state belief, use that updated belief to update the counts, and normalise them for the next prediction. For *B*, the count update uses the joint belief about the previous and current states after the new observation.
 
@@ -67,7 +67,7 @@ Now add one observation of dark to each. The first column becomes $[1.1, 0.4]$, 
 
 Same estimate, entirely different response to evidence. That difference is confidence, and the agent keeps no separate record of it. It is the size of the counts.
 
-That is the property the rest of this page is built on. A column the agent has visited a hundred times barely moves. A column it has never visited swings on a single observation.
+That is the property the rest of this module is built on. A column the agent has visited a hundred times barely moves. A column it has never visited swings on a single observation.
 
 For a state $s$, normalise its counts to obtain the corresponding column of
 the observation model:
@@ -133,7 +133,7 @@ The low-count and high-count examples predict the same observations: 20% dark an
 >
 > $$\frac{1}{2}\left(\frac{1}{a_o}-\frac{1}{\bar a}\right)$$
 >
-> can be inaccurate when any individual count is small, so the calculations on this page use the exact expression.
+> can be inaccurate when any individual count is small, so the calculations in this module use the exact expression.
 
 ## The third term
 
@@ -178,7 +178,7 @@ We compare three ways of choosing actions. The random-walk baseline does not use
 
 $$q(u_t=u)=\frac{1}{5}$$
 
-To isolate the change in action selection, **AIF without *A* novelty** uses the expected-free-energy score from the previous page. It values information about position, but not information about *A*:
+To isolate the change in action selection, **AIF without *A* novelty** uses the expected-free-energy score from the previous module. It values information about position, but not information about *A*:
 
 $$G_4(u)=\text{pragmatic cost}(u)-\mathrm{IG}_{s}(u).$$
 
@@ -200,7 +200,7 @@ In the figure above, at each step the agent acts, receives one sensor observatio
 
 Read the curves from 100% = starting error towards 0% = model learned. Lower is better. The coloured number is how many times the agent visited the works cells.
 
-The middle curve is a control: the original agent used in the previous page held *A* fixed, whereas this control updates *A* after every observation.
+The middle curve is a control: the original agent used in the previous module held *A* fixed, whereas this control updates *A* after every observation.
 Both AIF conditions use the same update equation. The only difference is that one includes $-\mathrm{IG}_A$ in its action score which directs action towards uncertain observation columns.
 
 **At night: learn dark vs lit**. Each works column starts uncertain between these two observations. Because the works cells actually appear dark, a falling curve means that the agent is learning their dark-observation probability.
@@ -273,9 +273,9 @@ available to the agent. -->
 
 ## Learning where steps lead
 
-The agent has learned what observations to expect in each state. It can use the same counting method to learn where its actions lead. One column of *A* asks, “What will I observe in this state?” One column of *B* asks, “If I start in state $j$ and take action $u$, where will I arrive?”. (Earlier lessons used \(a\) for an action. From this page onward, \(a\) denotes the counts underlying A, so we write \(u\) for an action.)
+The agent has learned what observations to expect in each state. It can use the same counting method to learn where its actions lead. One column of *A* asks, “What will I observe in this state?” One column of *B* asks, “If I start in state $j$ and take action $u$, where will I arrive?”. (Earlier modules used \(a\) for an action. From this module onward, \(a\) denotes the counts underlying A, so we write \(u\) for an action.)
 
-As in lesson 2, *B* allows a commanded step to end somewhere other than its intended destination. These probabilities describe what the agent believes may happen. In the world itself, a step goes exactly where it was aimed.
+As in module 2, *B* allows a commanded step to end somewhere other than its intended destination. These probabilities describe what the agent believes may happen. In the world itself, a step goes exactly where it was aimed.
 
 Except in the upper corner, where the works have put up walls. There, some steps that used to go through now leave the agent where it was.
 
@@ -397,7 +397,7 @@ The model predicts that the step probably succeeds. Because both sides look dark
 
 The small chart presented above isolates what happens after a blocked command. In both conditions, the agent tries 5 times to move through the same wall, while its true position remains in the works cell. At night, the works cell and the intended destination both look dark, so the observation cannot correct the agent's prediction that it moved. Its belief in its true position therefore falls. By day, W means that it stayed and green would mean that it crossed the wall, so each observation confirms its true position.
 
-This is the circularity from the start of the page. The agent needs a useful *B* to localise, but it also needs localisation to assign evidence to the correct column of *B*. Smoothing can reassign evidence that later observations clarify; it cannot create a distinction absent from the complete observation history.
+This is the circularity from the start of the module. The agent needs a useful *B* to localise, but it also needs localisation to assign evidence to the correct column of *B*. Smoothing can reassign evidence that later observations clarify; it cannot create a distinction absent from the complete observation history.
 
 ## Learning *A* and *B* together
 
@@ -439,11 +439,11 @@ transition novelty.-->
 
 ## Two unknowns, one machinery
 
-The agent began this page trusting two tables. It ends it holding beliefs about both.
+The agent began this module trusting two tables. It ends it holding beliefs about both.
 
-Nothing was added to make it curious about its model. The novelty term was not invented and bolted on; it is the same divergence the previous page produced, pointed at a different unknown. Where the epistemic term asks what an observation would tell the agent about where it is, novelty asks what it would tell the agent about what the world is like, and the two are the same question with a different subject.
+Nothing was added to make it curious about its model. The novelty term was not invented and bolted on; it is the same divergence the previous module produced, pointed at a different unknown. Where the epistemic term asks what an observation would tell the agent about where it is, novelty asks what it would tell the agent about what the world is like, and the two are the same question with a different subject.
 
-That is the claim this page was built to make. There are two things an agent can fail to know, and the framework does not treat them as different problems. It writes down what it does not know, scores actions by how much of that they would resolve, and lets the arithmetic decide what to do first.
+That is the claim this module was built to make. There are two things an agent can fail to know, and the framework does not treat them as different problems. It writes down what it does not know, scores actions by how much of that they would resolve, and lets the arithmetic decide what to do first.
 
 **Active inference can direct limited observations towards what the agent expects to learn from, while also considering localisation and preferences**. This is
 especially useful when:
@@ -458,4 +458,10 @@ especially useful when:
 
 Its advantage depends on whether the model, sensor, planning horizon and learning metric make the relevant information identifiable and useful.
 
-Novelty does not directly measure whether the model is wrong. Identical counts give identical novelty whether or not they describe the world accurately. Large counts can therefore make a mistaken column look unpromising to revisit. Contradictory observations can still correct finite counts through the updates already given, provided the agent gathers evidence and assigns it to the relevant states. What this page does not provide is a dedicated mechanism for detecting a changed world or discounting old evidence.
+Novelty does not directly measure whether the model is wrong. Identical counts give identical novelty whether or not they describe the world accurately. Large counts can therefore make a mistaken column look unpromising to revisit. Contradictory observations can still correct finite counts through the updates already given, provided the agent gathers evidence and assigns it to the relevant states. What this module does not provide is a dedicated mechanism for detecting a changed world or discounting old evidence.
+
+## To go further
+
+- Namjoshi, [*Fundamentals of Active Inference*](https://mitpress.mit.edu/9780262050951/fundamentals-of-active-inference/), Chapter 10, especially §10.1, develops Dirichlet learning of `A`, `B`, and `D` and the parameter-novelty term used here.
+
+- Lanillos et al., [“Active inference in robotics and artificial agents: survey and challenges”](https://arxiv.org/abs/2112.01871), surveys state estimation, control, planning, and learning in robotics and makes clear which practical challenges remain beyond this grid world.

@@ -1,5 +1,5 @@
 /**
- * Widgets specific to lesson-1.html (the lamp gridworld walkthrough).
+ * Widgets specific to module-1.html (the lamp gridworld walkthrough).
  * Shared infrastructure (mount, drawing helpers, the lamp world constants)
  * lives in widget.js.
  */
@@ -30,7 +30,7 @@ import {
 import { uniformBelief, update } from "./aif.js";
 
 // --- legend ----------------------------------------------------------------
-// Figure: the lamp/lit-vs-dark cell legend (content/lesson-1.md, before "the
+// Figure: the lamp/lit-vs-dark cell legend (content/module-1.md, before "the
 // map is what makes the readings interpretable at all").
 mount("legend", (el) => {
   const CANVAS_W = 480;
@@ -74,7 +74,7 @@ mount("legend", (el) => {
 });
 
 // --- state-vs-belief -------------------------------------------------------
-// Figure: hidden state vs the agent's belief, side by side (content/lesson-1.md,
+// Figure: hidden state vs the agent's belief, side by side (content/module-1.md,
 // the "gap between them" section).
 // Left: the world, one hidden state, the agent on it. Right: what the world
 // would show, a bump per cell at p(lit | s). Several cells carry the same
@@ -107,7 +107,7 @@ mount("state-vs-belief", (el) => {
 
 // --- commit-vs-distribute --------------------------------------------------
 // Figure: cost of committing to one cell vs keeping a distribution
-// (content/lesson-1.md, "This is what committing fully to one answer costs.").
+// (content/module-1.md, "This is what committing fully to one answer costs.").
 // The lesson's argument, stacked on one stepper. The agent never moves: it
 // sits on cell 10 for the whole demo, exactly like every other widget on this
 // page. The two panels differ only in what they DO with that fixed position.
@@ -121,9 +121,7 @@ mount("commit-vs-distribute", (el) => {
   controls.style.margin = "0 0 0.75rem";
   const next = document.createElement("button");
   next.textContent = "next observation";
-  const restart = document.createElement("button");
-  restart.textContent = "restart";
-  controls.append(next, restart);
+  controls.append(next);
   el.appendChild(controls);
 
   const W = 720;
@@ -133,7 +131,10 @@ mount("commit-vs-distribute", (el) => {
 
   const ctx = ctxOf(el, W, H);
   if (!ctx) return;
-  const beliefs = lampBeliefs();
+  // The readings cycle through SEQUENCE without end, and the belief keeps
+  // folding them in, so the loop never shows as a reset.
+  const reading = (i) => SEQUENCE[i % SEQUENCE.length];
+  const beliefs = [uniformBelief(N)];
 
   // The committing agent, replayed from the start. It commits to its own
   // cell (10) on the first lit reading and holds that as certain; a dark
@@ -144,7 +145,7 @@ mount("commit-vs-distribute", (el) => {
     let restarts = 0;
     let justCommitted = false;
     for (let i = 0; i < step; i++) {
-      const o = SEQUENCE[i];
+      const o = reading(i);
       justCommitted = false;
       if (!held) {
         if (o === LIT) {
@@ -162,17 +163,17 @@ mount("commit-vs-distribute", (el) => {
   let step = 0;
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    const o = step === 0 ? null : SEQUENCE[step - 1];
+    const o = step === 0 ? null : reading(step - 1);
     const b = beliefs[step];
 
-    label(ctx, step === 0
-      ? "no readings yet"
-      : `reading ${step} of ${SEQUENCE.length}:  ${obsName(o)}`, 16, 16, COLOUR.ink);
+    const heading = step === 0 ? "no readings yet" : `reading ${step}:  ${obsName(o)}`;
+    label(ctx, heading, 16, 16, COLOUR.ink);
     if (o !== null) {
+      const sx = Math.round(16 + ctx.measureText(heading).width + 10);
       ctx.fillStyle = obsColour(o);
-      ctx.fillRect(196, 6, 14, 12);
+      ctx.fillRect(sx, 6, 14, 12);
       ctx.strokeStyle = o === LIT ? COLOUR.litEdge : COLOUR.dark;
-      ctx.strokeRect(196.5, 6.5, 13, 11);
+      ctx.strokeRect(sx + 0.5, 6.5, 13, 11);
     }
 
     // --- The cell itself: real position, never moves ------------------
@@ -250,18 +251,15 @@ mount("commit-vs-distribute", (el) => {
   }
 
   next.addEventListener("click", () => {
-    step = Math.min(SEQUENCE.length, step + 1);
-    draw();
-  });
-  restart.addEventListener("click", () => {
-    step = 0;
+    beliefs.push(update(beliefs[step], A_LAMP, reading(step)).posterior);
+    step += 1;
     draw();
   });
   draw();
 });
 
 // --- belief-bars -----------------------------------------------------------
-// Figure: belief bar chart update after one observation (content/lesson-1.md,
+// Figure: belief bar chart update after one observation (content/module-1.md,
 // the "worked example" showing prior x likelihood = unnormalised / evidence).
 // The update with its working shown. update() already hands back the
 // likelihood and the unnormalised product, so all four rows are the same
@@ -432,7 +430,7 @@ mount("belief-bars", (el) => {
 });
 
 // --- a-columns -------------------------------------------------------------
-// Figure: A-matrix columns, p(o | s) for a fixed state (content/lesson-1.md,
+// Figure: A-matrix columns, p(o | s) for a fixed state (content/module-1.md,
 // "Read a column..." / the false-reading-rate paragraph before <widget a-columns>).
 // Hovering a column connects it to the same cell in the world. Each column is
 // a distribution over the two observations and fills its bar to exactly one.
@@ -489,7 +487,7 @@ mount("a-columns", (el) => {
 });
 
 // --- a-rows ----------------------------------------------------------------
-// Figure: A-matrix rows, p(o | s) for a fixed observation (content/lesson-1.md,
+// Figure: A-matrix rows, p(o | s) for a fixed observation (content/module-1.md,
 // "Now it reads A in the other direction..." before <widget a-rows>).
 // Hovering across the lit row exposes its running total. It passes one and
 // keeps going, which is the whole point: rows are scores, not distributions.
@@ -553,7 +551,7 @@ mount("a-rows", (el) => {
 });
 
 // --- sequence-stepper ------------------------------------------------------
-// Figure: belief converging over a sequence of observations (content/lesson-1.md,
+// Figure: belief converging over a sequence of observations (content/module-1.md,
 // the payoff section ending "the agent is most of the way to it.").
 // The payoff. The agent stands still on a lit cell for seven readings, two of
 // which are false, and the belief is folded over the fixed sequence so that

@@ -1,4 +1,4 @@
-# Lesson 3. Free energy
+# Module 3. Free energy
 ## The step that gets expensive
 
 Go back to the update the agent performs when an observation arrives. It multiplies the belief it held beforehand by the likelihood read from *A*, and then divides by the total:
@@ -216,3 +216,9 @@ The fall is steep and then slow, which is why the panel plots how far $F$ still 
 ## End note
 
 In a grid this size, free energy is not necessary. The posterior can be computed directly by multiplying and normalising, and doing so is less work than searching for it. That is exactly why the demonstration above was possible: the exact posterior was available, so it could be scored alongside the approximate ones and shown to be the one free energy picks out. What free energy buys is that everything shown here still holds when the state count reaches bigger scales, and the sum over every state can no longer be afforded. Direct computation stops being possible at that point. Scoring an approximate posterior does not.
+
+## To go further
+
+- Namjoshi, [*Fundamentals of Active Inference*](https://mitpress.mit.edu/9780262050951/fundamentals-of-active-inference/), Chapter 4, develops variational inference and the different forms of variational free energy used in this module.
+
+- Da Costa et al., [“Active inference on discrete state-spaces: a synthesis”](https://pmc.ncbi.nlm.nih.gov/articles/PMC7732703/), equations (2) and (3), state the free-energy bound and its complexity–accuracy decomposition in the discrete setting.

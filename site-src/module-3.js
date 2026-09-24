@@ -1,5 +1,5 @@
 /**
- * Widgets specific to lesson-3.html (free energy: scoring a belief you cannot
+ * Widgets specific to module-3.html (free energy: scoring a belief you cannot
  * check against the answer). Shared infrastructure lives in widget.js.
  *
  * Every figure here uses the same five-cell world as lesson 2's
@@ -66,7 +66,7 @@ function randomQ() {
 // --- kl-never-negative -----------------------------------------------------
 // Figure: the reader has just been told the divergence is never negative, and
 // has been given a reason to doubt it, since the prose admits individual terms
-// go negative (content/lesson-3.md, "It is never negative").
+// go negative (content/module-3.md, "It is never negative").
 //
 // The argument is entirely in the last two rows. The log ratio goes negative
 // wherever q is less confident than the posterior; reweighting by q shrinks
@@ -264,7 +264,7 @@ mount("kl-never-negative", (el) => {
 
 // --- q-lives-in-the-simplex ------------------------------------------------
 // Figure: the lesson has just said the agent's task changes from arithmetic
-// with one answer to a search over the probability simplex (content/lesson-3.md,
+// with one answer to a search over the probability simplex (content/module-3.md,
 // "The second is that the agent's task changes shape").
 //
 // That sentence is the lesson's central reframing and it is the one claim here
@@ -472,7 +472,7 @@ mount("q-lives-in-the-simplex", (el) => {
 // --- score-five-q ----------------------------------------------------------
 // Figure: five beliefs scored against one observation, so the reader can see
 // that F ranks them the same way the divergence does, and that the two differ
-// by one fixed number (content/lesson-3.md, "Compare situations over one
+// by one fixed number (content/module-3.md, "Compare situations over one
 // step"). The prior and the observation are drawn once at the top because the
 // section insists the starting point is fixed: only q changes down the page.
 mount("score-five-q", (el) => {
@@ -623,7 +623,7 @@ mount("score-five-q", (el) => {
 // --- descend-on-f ----------------------------------------------------------
 // Figure: the claim being used rather than checked. An optimiser is handed one
 // number, F, and lowers it; q ends up on the posterior it was never shown
-// (content/lesson-3.md, "Step by step correction of one situation").
+// (content/module-3.md, "Step by step correction of one situation").
 //
 // The descent is on the softmax parameters of q rather than on q itself, so
 // every step lands on a distribution without clamping or renormalising by

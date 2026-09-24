@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the static site into site/.
 
-Each lesson is one Markdown file under content/. This renders it to a
+Each module is one Markdown file under content/. This renders it to a
 standalone HTML page: prose and math from Markdown, non-interactive figures
 pre-rendered to SVG by rendering/plots.py, and <widget> tags left as mount
 points for site-src/widgets.js. Nothing runs Python in the browser.
@@ -22,11 +22,11 @@ INDEX_PAGE = CONTENT / "index_page.md"
 
 # (slug, markdown path). The slug is the output file name and the URL.
 PAGES = [
-    ("lesson-1", CONTENT / "lesson-1.md"),
-    ("lesson-2", CONTENT / "lesson-2.md"),
-    ("lesson-3", CONTENT / "lesson-3.md"),
-    ("lesson-4", CONTENT / "lesson-4.md"),
-    ("lesson-5", CONTENT / "lesson-5.md"),
+    ("module-1", CONTENT / "module-1.md"),
+    ("module-2", CONTENT / "module-2.md"),
+    ("module-3", CONTENT / "module-3.md"),
+    ("module-4", CONTENT / "module-4.md"),
+    ("module-5", CONTENT / "module-5.md"),
 ]
 
 
@@ -174,16 +174,32 @@ PAGE_SHELL = """<!doctype html>
 def asset_version(slug):
     assets = [SITE_SRC / "page.css", SITE_SRC / "aif.js",
               SITE_SRC / "widget.js", SITE_SRC / f"{slug}.js"]
-    if slug == "lesson-4":
+    if slug == "module-4":
         assets.append(SITE_SRC / "agent-comparison.js")
-    if slug == "lesson-5":
-        assets.extend([SITE_SRC / "lesson-5-data.js",
-                       SITE_SRC / "lesson-5-b-data.js",
-                       SITE_SRC / "lesson-5-joint-data.js"])
+    if slug == "module-5":
+        assets.extend([SITE_SRC / "module-5-data.js",
+                       SITE_SRC / "module-5-b-data.js",
+                       SITE_SRC / "module-5-joint-data.js"])
     digest = hashlib.sha256()
     for asset in assets:
         digest.update(asset.read_bytes())
     return digest.hexdigest()[:12]
+
+
+def module_nav(i):
+    """Previous / menu / next links, in PAGES order."""
+
+    def link(j, arrow_left):
+        slug, md_path = PAGES[j]
+        name = re.sub(r"^Module \d+\.\s*", "", first_heading(md_path.read_text()))
+        label = f"Module {j + 1}. {name}"
+        text = f"&larr; {label}" if arrow_left else f"{label} &rarr;"
+        return f'<a href="./{slug}.html">{text}</a>'
+
+    prev = link(i - 1, True) if i > 0 else "<span></span>"
+    nxt = link(i + 1, False) if i + 1 < len(PAGES) else "<span></span>"
+    return (f'<nav class="module-nav">{prev}'
+            f'<a href="./index.html">Back to menu</a>{nxt}</nav>')
 
 
 def build_page(slug, md_path, out_dir):
@@ -191,6 +207,7 @@ def build_page(slug, md_path, out_dir):
     html = render_markdown(text)
     html = render_figures(html, out_dir)
     html = render_widgets(html)
+    html += "\n" + module_nav([s for s, _ in PAGES].index(slug))
     version = asset_version(slug)
     page = PAGE_SHELL.format(title=first_heading(text), body=html, slug=slug,
                              version=version)
@@ -199,47 +216,51 @@ def build_page(slug, md_path, out_dir):
 
 def build_index(out_dir):
     """Render the Markdown introduction into the existing homepage shell."""
-    text = INDEX_PAGE.read_text()
-    body = render_widgets(render_figures(render_markdown(text), out_dir))
+    # "## Going further" goes after the template's module list, the rest before it.
+    intro, sep, further = INDEX_PAGE.read_text().partition("\n## Going further")
+    body, tail = (render_widgets(render_figures(render_markdown(t), out_dir))
+                  for t in (intro, sep + further))
     template = (ROOT / "index.html").read_text()
     body_start = template.index("<main>") + len("<main>")
-    rest_start = template.index('<div class="note">')
-    page = template[:body_start] + "\n" + body + "\n\n  " + template[rest_start:]
+    rest_start = template.index("<h2>What this is not</h2>")
+    footer = template.index("<footer>")
+    page = (template[:body_start] + "\n" + body + "\n\n  " + template[rest_start:footer]
+            + tail + "\n\n  " + template[footer:])
     (out_dir / "index.html").write_text(page)
 
 
 def copy_assets(out_dir):
     names = ["page.css", "aif.js", "widget.js", "agent-comparison.js",
              "agent-comparison-data.js", "figure6-curves.js",
-             "figure6-curves-data.js", "lesson-5-data.js",
-             "lesson-5-b-data.js", "lesson-5-joint-data.js"] + [f"{slug}.js" for slug, _ in PAGES]
+             "figure6-curves-data.js", "module-5-data.js",
+             "module-5-b-data.js", "module-5-joint-data.js"] + [f"{slug}.js" for slug, _ in PAGES]
     for name in names:
         shutil.copy(SITE_SRC / name, out_dir / name)
-    lesson_4_js = out_dir / "lesson-4.js"
+    module_4_js = out_dir / "module-4.js"
     comparison_version = hashlib.sha256(
         (SITE_SRC / "agent-comparison.js").read_bytes()
     ).hexdigest()[:12]
-    lesson_4_js.write_text(lesson_4_js.read_text().replace(
+    module_4_js.write_text(module_4_js.read_text().replace(
         "./agent-comparison.js", f"./agent-comparison.js?v={comparison_version}"
     ))
-    lesson_5_js = out_dir / "lesson-5.js"
+    module_5_js = out_dir / "module-5.js"
     data_version = hashlib.sha256(
-        (SITE_SRC / "lesson-5-data.js").read_bytes()
+        (SITE_SRC / "module-5-data.js").read_bytes()
     ).hexdigest()[:12]
-    lesson_5_js.write_text(lesson_5_js.read_text().replace(
-        "./lesson-5-data.js", f"./lesson-5-data.js?v={data_version}"
+    module_5_js.write_text(module_5_js.read_text().replace(
+        "./module-5-data.js", f"./module-5-data.js?v={data_version}"
     ))
     b_data_version = hashlib.sha256(
-        (SITE_SRC / "lesson-5-b-data.js").read_bytes()
+        (SITE_SRC / "module-5-b-data.js").read_bytes()
     ).hexdigest()[:12]
-    lesson_5_js.write_text(lesson_5_js.read_text().replace(
-        "./lesson-5-b-data.js", f"./lesson-5-b-data.js?v={b_data_version}"
+    module_5_js.write_text(module_5_js.read_text().replace(
+        "./module-5-b-data.js", f"./module-5-b-data.js?v={b_data_version}"
     ))
     joint_data_version = hashlib.sha256(
-        (SITE_SRC / "lesson-5-joint-data.js").read_bytes()
+        (SITE_SRC / "module-5-joint-data.js").read_bytes()
     ).hexdigest()[:12]
-    lesson_5_js.write_text(lesson_5_js.read_text().replace(
-        "./lesson-5-joint-data.js", f"./lesson-5-joint-data.js?v={joint_data_version}"
+    module_5_js.write_text(module_5_js.read_text().replace(
+        "./module-5-joint-data.js", f"./module-5-joint-data.js?v={joint_data_version}"
     ))
     katex_src = SITE_SRC / "katex"
     if katex_src.exists():

@@ -14,13 +14,13 @@ Fetch me a fork from a kitchen you have never been in. Same task, but you no lon
 
 Now walk into that kitchen needing nothing. You will still open a few cupboards, and you will first skip the ones you can already guess: the glass-fronted cabinet, the one under the sink. What draws you is the drawer you cannot predict what they contain. Exploration on its own, with nothing but information being sought.
 
-In this page, the agent is given only what it is after. No instruction to explore, no exploration bonus. 
+In this module, the agent is given only what it is after. No instruction to explore, no exploration bonus.
 
 ## What the agent is after
 
 Consider the exploitation case first: the familiar kitchen, where the agent knows where things are and only needs to know what it is after.
 
-In this framework, what the agent is after is stated in **C**, the **preference**: a distribution over observations, with the fork reading carrying the largest entry.
+In this framework, what the agent is after is stated in *C*, the **preference**: a distribution over observations, with the fork reading carrying the largest entry.
 
 $$p(o \mid C)$$
 
@@ -32,7 +32,7 @@ Because the entries sum to one, they compete. The agent cannot care more about o
 
 That competition is the first thing separating $C$ from reward, and the second is what it is indexed by.
 
-For comparison, take a simple reward vector $r(s)$: reaching the home cell is worth ten and every other state is worth zero. Its entries are real-valued scores, not probabilities. They need not sum to one and could be negative. A reward need not always be indexed by state alone; this state-only example is used here because it makes the contrast in shape visible. It is not an additional object in the active-inference model on this page.
+For comparison, take a simple reward vector $r(s)$: reaching the home cell is worth ten and every other state is worth zero. Its entries are real-valued scores, not probabilities. They need not sum to one and could be negative. A reward need not always be indexed by state alone; this state-only example is used here because it makes the contrast in shape visible. It is not an additional object in the active-inference model in this module.
 
 Reward values can also be encoded as preferences, for example through $p(o\mid C)\propto\exp(r(o))$, where $r(o)$ assigns a reward to each observation. For a fixed horizon, the resulting pragmatic cost is negative expected reward plus a policy-independent constant. The information-gain term is the additional component of the score used here.
 
@@ -354,7 +354,7 @@ $\gamma$ is called the **precision** and is positive. It sets how sharply the be
 <widget id="scores-to-probabilities"></widget>
 
 Figure 5 illustrates what $\gamma$ does to their probabilities, not a distribution over every possible policy. The probabilities use the full-precision scores, rather than the rounded numbers printed in the table.
-$\gamma$ can also be learned rather than fixed, so that the agent's confidence in its own planning adjusts as it goes. And a second prior over policies, written $E$, encodes a bias towards certain ways of behaving regardless of what they score: habits, in effect. We will introduce this in page 6.
+$\gamma$ can also be learned rather than fixed, so that the agent's confidence in its own planning adjusts as it goes. And a second prior over policies, written $E$, encodes a bias towards certain ways of behaving regardless of what they score: habits, in effect. We will introduce this in module 6.
 
 ## Watching it run
 
@@ -368,7 +368,7 @@ The right-hand selector changes what $C$ prefers: a home-marked reading or occup
 
 <widget id="agent-walk-comparison"></widget>
 
-Both tasks assign **C(home)=0.50**: to the home reading under observation preferences, or to the home cell under state preferences. In the second task, home produces the same readings as an ordinary dark cell. Switching tasks therefore changes both the preference and the sensor model *A*. Physical movement is exact, but the agents’ model *B* assigns only 0.6 probability to the intended move, as in lesson 2.
+Both tasks assign **C(home)=0.50**: to the home reading under observation preferences, or to the home cell under state preferences. In the second task, home produces the same readings as an ordinary dark cell. Switching tasks therefore changes both the preference and the sensor model *A*. Physical movement is exact, but the agents’ model *B* assigns only 0.6 probability to the intended move, as in module 2.
 
 A lamp can help localisation in either task. Under the observation preference, its reading is also desirable in itself; under the state preference, every non-home cell has the same immediate pragmatic cost.
 
@@ -401,14 +401,10 @@ Tabular Q’s results depend strongly on training: in the home-marker task, 2 tr
 No agent was given an explicit bonus for reaching a lamp. AIF's information term can make a lamp route attractive because a lamp reading can narrow its position belief. A reward planner can also value a useful reading when it plans actions contingent on future observations; the fixed-sequence reward planner here does not make such branches. Which route wins depends on the model, preferences, horizon and actual readings, so one walk is not a general performance claim.
 
 
-///possible sources
+## To go further
 
-Smith, Friston and Whyte, "A step-by-step tutorial on active inference and its application to empirical data". Worked examples with code, including an explore-exploit task, and it derives the decompositions in an appendix. Closest in spirit to what you are writing, and the natural next step for someone who has finished this section.
+- Namjoshi, [*Fundamentals of Active Inference*](https://mitpress.mit.edu/9780262050951/fundamentals-of-active-inference/), Chapter 9, especially §§9.4–9.6, develops expected free energy and policy selection; Chapter 10's two-armed-bandit example isolates the trade between paying for information and exploiting what is already known.
 
-Namjoshi, "Fundamentals of Active Inference", chapter 10. The two-armed bandit worked through with actual numbers: two slot machines with hidden payout probabilities, plus a hint the agent can pay for. A risk-averse agent skips the hint and pulls levers; a less risk-averse one takes hints first and then exploits. That is the espresso example and your lamp detour in a third setting, and the chapter shows the 
-G
-G traces for each policy over time.
+- Smith, Friston and Whyte, [“A step-by-step tutorial on active inference and its application to empirical data”](https://www.sciencedirect.com/science/article/pii/S0022249621000973), follows the same ideas into worked simulations, including exploration and exploitation, and derives the expected-free-energy decompositions in its appendix.
 
-The bandit is the better pointer for this section specifically, because it isolates the same trade in a world with no map: the hint costs money and buys only information.
-
-For the reinforcement learning side, the standard text is Sutton and Barto, Reinforcement Learning: An Introduction, which the active inference papers cite throughout. I have not verified an edition or URL, so check that before it goes in.
+- Millidge, Tschantz and Buckley, [“Whence the Expected Free Energy?”](https://direct.mit.edu/neco/article/33/2/447/95645/Whence-the-Expected-Free-Energy), is the critical companion: it examines where the objective comes from and which conclusions require additional assumptions.

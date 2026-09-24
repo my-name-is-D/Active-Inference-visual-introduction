@@ -1,8 +1,8 @@
 /** Verified A-learned, B-fixed comparison; all runs are precomputed. */
 import { mount, mountAll } from './widget.js';
-import { A_FIXED_B_DATA as DATA } from './lesson-5-data.js';
-import { B_FIXED_A_DATA as B_DATA } from './lesson-5-b-data.js';
-import { JOINT_DATA } from './lesson-5-joint-data.js';
+import { A_FIXED_B_DATA as DATA } from './module-5-data.js';
+import { B_FIXED_A_DATA as B_DATA } from './module-5-b-data.js';
+import { JOINT_DATA } from './module-5-joint-data.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const COLOURS = ['#111', '#ffdb58', '#39758d', '#a7a9ac', '#6e9c55', '#e67e50'];

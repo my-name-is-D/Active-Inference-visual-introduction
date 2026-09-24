@@ -1,5 +1,5 @@
 /**
- * Widgets specific to lesson-4.html (expected free energy: scoring policies
+ * Widgets specific to module-4.html (expected free energy: scoring policies
  * before their observations have happened). Shared infrastructure and the
  * reusable EFE arithmetic live in widget.js and aif.js respectively.
  */
@@ -22,7 +22,7 @@ import { AGENT_WALKS } from "./agent-comparison-data.js";
 import "./agent-comparison.js";
 import "./figure6-curves.js";
 
-// Canonical lesson-4 world from content/lesson-4.md, "Watching it run".
+// Canonical module-4 world from content/module-4.md, "Watching it run".
 // Prose coordinates are 1-indexed; state indices are the zero-indexed row-major
 // representation used by A and B throughout the code.
 const LAMPS = [9, 13]; // (2, 5) and (3, 4)

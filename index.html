@@ -113,18 +113,10 @@
   </p>
 
   <p>
-    Seven questions, one walk. Each of the seven is a lesson here, in that
+    Seven questions, one walk. Each of the seven is a module here, in that
     order, and each one ends with code small enough that you can read every
     number in it.
   </p>
-
-  <div class="note">
-    <strong>An interactive tutorial.</strong> Every equation appears only
-    after you have run the code it describes. These pages are static and load
-    immediately: the interactive parts are small JavaScript widgets, and
-    nothing is sent to a server. A laptop is recommended, the lessons put
-    figures side by side and are cramped on a phone.
-  </div>
 
   <h2>What this is not</h2>
   <p>
@@ -132,38 +124,31 @@
     <a href="https://github.com/infer-actively/pymdp">pymdp</a> is the reference
     implementation and the better choice. Everything here is re-derived in plain
     numpy because the purpose is comprehension, not deployment. Active inference
-    also does not beat reinforcement learning asymptotically; the last lesson
-    is about when not to use it.
+    also does not beat reinforcement learning asymptotically; the last module
+    is about when to use it.
   </p>
 
-  <h2>The lessons</h2>
+  <h2>The modules</h2>
   <ol class="toc">
     <li>
-      <span class="t"><a href="./lesson-1.html">Lesson 1. Where am I?</a></span>
-      <span class="d">A lamp, a grid, and an agent that cannot see where it is.
-      Why one answer is not enough, and what a belief is instead. Bayes' rule,
-      multiplied out by hand.</span>
+      <span class="t"><a href="./module-1.html">Module 1. Where am I?</a></span>
+      <span class="d">An agent that does not know where it stands keeps a belief over every cell, updated with Bayes' rule.</span>
     </li>
     <li>
-      <span class="t"><a href="./lesson-2.html">Lesson 2. Moving</a></span>
-      <span class="d">The transition model, and what a step costs. Prediction
-      as a matrix product, and the two kinds of uncertainty an agent has to
-      tell apart.</span>
+      <span class="t"><a href="./module-2.html">Module 2. Moving</a></span>
+      <span class="d">Moving blurs the belief, looking sharpens it again.</span>
     </li>
     <li>
-      <span class="t"><a href="./lesson-3.html">Lesson 3. Free energy</a></span>
-      <span class="d">Scoring a belief against an answer you cannot compute.
-      The KL divergence, and what is left of it once the intractable term is
-      driven out.</span>
+      <span class="t"><a href="./module-3.html">Module 3. Free energy</a></span>
+      <span class="d">Free energy scores an approximate belief when the exact one is too costly to compute.</span>
     </li>
     <li>
-      <span class="t"><a href="./lesson-4.html">Lesson 4. Expected free energy</a></span>
-      <span class="d">Expected free energy, decomposed. The argument the
-      repository exists to make.</span>
+      <span class="t"><a href="./module-4.html">Module 4. Expected free energy</a></span>
+      <span class="d">The agent chooses actions by scoring which future both informs it and suits it.</span>
     </li>
     <li>
-      <span class="t"><a href="./lesson-5.html">Lesson 5. Novelty and an uncertain model</a></span>
-      <span class="d">The same expression, with the model itself uncertain.</span>
+      <span class="t"><a href="./module-5.html">Module 5. Novelty and an uncertain model</a></span>
+      <span class="d">The agent learns its own model by counting, and novelty drives it to where counts are few.</span>
     </li>
     <li class="pending">
       <span class="t">Preferences, and what they cost</span>
@@ -171,7 +156,7 @@
       rather than claimed.</span>
     </li>
     <li class="pending">
-      <span class="t">When not to use this</span>
+      <span class="t">When to use this</span>
       <span class="d">Zero one term and the agent becomes a reward maximiser.</span>
     </li>
   </ol>

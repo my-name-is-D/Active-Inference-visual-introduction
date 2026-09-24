@@ -5,22 +5,22 @@ mathematics off-putting, are unconvinced the theory buys them anything, or are
 unsure how to use it concretely. The organising question throughout is **what
 does this give me that a reward function does not?**
 
-Each lesson is one static HTML page built from a Markdown source. The prose and
+Each module is one static HTML page built from a Markdown source. The prose and
 maths are rendered at build time; the interactive parts are small JavaScript
 widgets that draw to a canvas. Nothing runs in the browser except those
 widgets, so the pages load immediately.
 
 ## Status
 
-Work package 0 (the deployment pipeline) and the first three lessons,
-`content/lesson-1.md` through `content/lesson-3.md`, are done. The remaining
-lessons are listed on the landing page.
+Work package 0 (the deployment pipeline) and the first three modules,
+`content/module-1.md` through `content/module-3.md`, are done. The remaining
+modules are listed on the landing page.
 
 ## Running locally
 
 ```sh
-$EDITOR content/lesson-3.md                # edit a lesson
-$EDITOR site-src/lesson-3.js               # edit that lesson's widgets
+$EDITOR content/module-3.md                # edit a module
+$EDITOR site-src/module-3.js               # edit that module's widgets
 $EDITOR site-src/widget.js                 # edit the shared widget layer
 ./build.sh site                            # build the static site
 python3 -m http.server --directory site

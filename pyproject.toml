@@ -10,7 +10,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
-# build.py renders the Markdown lessons to HTML. Build-time only; nothing here
+# build.py renders the Markdown modules to HTML. Build-time only; nothing here
 # ships to the browser.
 build = ["markdown>=3.5"]
 

@@ -1,5 +1,5 @@
 /**
- * Widgets specific to lesson-2.html (moving, and what it costs the belief).
+ * Widgets specific to module-2.html (moving, and what it costs the belief).
  * Shared infrastructure (mount, drawing helpers, the lamp world constants)
  * lives in widget.js.
  */
@@ -31,7 +31,7 @@ import { transitionModel, predict, update, lampObservationModel } from "./aif.js
 
 // --- permutation-vs-spread -------------------------------------------------
 // Figure: the two sources of uncertainty, each with its own control, so the
-// reader removes one at a time and watches what changes (content/lesson-2.md,
+// reader removes one at a time and watches what changes (content/module-2.md,
 // "Why the table is not a permutation").
 //
 // The slider is the agent's confidence in its own step, NOT the world's
@@ -324,7 +324,7 @@ mount("permutation-vs-spread", (el) => {
 });
 
 // --- b-columns -------------------------------------------------------------
-// Figure: what a row and a column of B actually mean (content/lesson-2.md,
+// Figure: what a row and a column of B actually mean (content/module-2.md,
 // "Each column sums to one, because wherever the agent starts, it ends up
 // somewhere").
 //
@@ -378,7 +378,7 @@ mount("b-columns", (el) => {
       p.toFixed(2) +
       ": probability to reach cell " + dest +
       " from cell " + origin +
-      " in one step according to the matrix"
+      " in one step."
     );
   }
 
@@ -571,7 +571,7 @@ mount("b-columns", (el) => {
 });
 
 // --- b-stack ---------------------------------------------------------------
-// Figure: B is a stack of matrices, one per action (content/lesson-2.md, under
+// Figure: B is a stack of matrices, one per action (content/module-2.md, under
 // B_ijk = p(s' = i | s = j, a = k)).
 //
 // Static, not interactive: the only claim is "there are several of these", and
@@ -703,7 +703,7 @@ mount("b-stack", (el) => {
 });
 // --- conserves-vs-not ------------------------------------------------------
 // Figure: prediction conserves total probability, the update does not
-// (content/lesson-2.md, "Why one multiplication needs fixing and the other
+// (content/module-2.md, "Why one multiplication needs fixing and the other
 // does not").
 //
 // No world panel. This is the one section of lesson 2 that is not about where
