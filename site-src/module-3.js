@@ -18,7 +18,6 @@ import {
   drawRow,
   drawOperand,
   ROW,
-  autoplay,
   COLOUR,
 } from "./widget.js";
 import { lampObservationModel } from "./aif.js";
@@ -656,12 +655,13 @@ function descend() {
 
 mount("descend-on-f", (el) => {
   const W = 760;
-  const H = 460;
+  const H = 560;
   const Q_Y = 176;
   const PLOT_X = 250;
   const PLOT_Y = 262;
-  const PLOT_W = NCELL * 56 - 8;
-  const PLOT_H = 110;
+  const PLOT_W = 460;
+  const PLOT_H = 160;
+  const BELOW = PLOT_Y + PLOT_H + 70; // first readout line, under the x axis
 
   const trace = descend();
   const ctx = ctxOf(el, W, H);
@@ -673,11 +673,7 @@ mount("descend-on-f", (el) => {
     ctx.clearRect(0, 0, W, H);
     const q = trace[step];
 
-    ctx.font = "12px system-ui, sans-serif";
-    ctx.fillStyle = COLOUR.dim;
-    ctx.textAlign = "center";
-    for (let j = 0; j < NCELL; j++) ctx.fillText(String(j), 250 + j * 56 + 24, Q_Y - 34);
-    ctx.textAlign = "left";
+    for (let j = 0; j < NCELL; j++) label(ctx, String(j), 250 + j * 56 + 24, Q_Y - 34, COLOUR.dim, 13, "center");
 
     // One fixed scale for the bars AND the outline. drawRow's default is to
     // scale each row by its own peak, which would draw q and the posterior at
@@ -686,7 +682,7 @@ mount("descend-on-f", (el) => {
     const SCALE = Math.max(...POSTERIOR, ...NAMED[2][1]);
     drawRow(ctx, Q_Y, {
       title: "q(s)",
-      subtitle: `step ${step} of ${STEPS}`,
+      subtitle: `update ${step} of ${STEPS}`,
       values: q,
       n: NCELL,
       scale: SCALE,
@@ -726,47 +722,72 @@ mount("descend-on-f", (el) => {
     const gaps = trace.map((t) => Math.max(freeEnergy(t) - floor, 1e-12));
     const lo = Math.log(Math.min(...gaps));
     const hi = Math.log(Math.max(...gaps));
+    const yOf = (g) => PLOT_Y + PLOT_H - ((Math.log(g) - lo) / (hi - lo || 1)) * PLOT_H;
+    const xOf = (i) => PLOT_X + (i / STEPS) * PLOT_W;
+
+    // A faint line at every decade, but a label on every other one only: the
+    // gap spans five decades, and five labels in this height would touch.
+    const SUP = { "-": "\u207b", 0: "\u2070", 1: "\u00b9", 2: "\u00b2", 3: "\u00b3", 4: "\u2074", 5: "\u2075", 6: "\u2076", 7: "\u2077", 8: "\u2078", 9: "\u2079" };
     ctx.strokeStyle = COLOUR.rule;
     ctx.lineWidth = 1;
+    for (let k = Math.ceil(lo / Math.LN10); k <= Math.floor(hi / Math.LN10); k++) {
+      const y = Math.round(yOf(10 ** k)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(PLOT_X, y);
+      ctx.lineTo(PLOT_X + PLOT_W, y);
+      ctx.stroke();
+      if (k % 2 !== 0) continue;
+      const text = k === 0 ? "1" : "10" + [...String(k)].map((c) => SUP[c]).join("");
+      label(ctx, text, PLOT_X - 8, y + 5, COLOUR.dim, 13, "right");
+    }
+    for (let i = 0; i <= STEPS; i += 10) {
+      const x = Math.round(xOf(i)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, PLOT_Y + PLOT_H);
+      ctx.lineTo(x, PLOT_Y + PLOT_H + 5);
+      ctx.stroke();
+      label(ctx, String(i), x, PLOT_Y + PLOT_H + 20, COLOUR.dim, 13, "center");
+    }
     ctx.strokeRect(PLOT_X + 0.5, PLOT_Y + 0.5, PLOT_W, PLOT_H);
+    label(ctx, "update of q", PLOT_X + PLOT_W / 2, PLOT_Y + PLOT_H + 40, COLOUR.dim, 13, "center");
+    label(ctx, "how far F sits above its floor, on a log scale", PLOT_X, PLOT_Y - 10, COLOUR.dim, 13);
+
     ctx.strokeStyle = COLOUR.neutral;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    gaps.forEach((g, i) => {
-      const x = PLOT_X + (i / STEPS) * PLOT_W;
-      const y = PLOT_Y + PLOT_H - ((Math.log(g) - lo) / (hi - lo || 1)) * PLOT_H;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
+    gaps.forEach((g, i) => (i === 0 ? ctx.moveTo(xOf(i), yOf(g)) : ctx.lineTo(xOf(i), yOf(g))));
     ctx.stroke();
-    const cx = PLOT_X + (step / STEPS) * PLOT_W;
-    const cy = PLOT_Y + PLOT_H - ((Math.log(gaps[step]) - lo) / (hi - lo || 1)) * PLOT_H;
     ctx.fillStyle = COLOUR.agent;
     ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+    ctx.arc(xOf(step), yOf(gaps[step]), 4, 0, 2 * Math.PI);
     ctx.fill();
     label(ctx, "F, falling", 24, PLOT_Y + 16, COLOUR.ink);
-    label(ctx, "plotted as how far it", 24, PLOT_Y + 38, COLOUR.dim, 13);
-    label(ctx, "still sits above its floor,", 24, PLOT_Y + 55, COLOUR.dim, 13);
-    label(ctx, "on a log scale", 24, PLOT_Y + 72, COLOUR.dim, 13);
-    label(ctx, `floor = -log p(o)`, 24, PLOT_Y + 96, COLOUR.dim, 13);
-    label(ctx, `= ${floor.toFixed(3)}`, 24, PLOT_Y + 113, COLOUR.dim, 13);
+    label(ctx, `floor = -log p(o)`, 24, PLOT_Y + 40, COLOUR.dim, 13);
+    label(ctx, `= ${floor.toFixed(3)}`, 24, PLOT_Y + 57, COLOUR.dim, 13);
 
-    label(ctx, `F = ${freeEnergy(q).toFixed(4)}`, 250, PLOT_Y + PLOT_H + 30, COLOUR.ink);
-    label(
-      ctx,
-      `D_KL[q || p(s|o)] = ${divergence(q).toFixed(4)}`,
-      420,
-      PLOT_Y + PLOT_H + 30,
-      COLOUR.dim,
-    );
-    label(ctx, "For visualisation only. Needs the posterior", 420, PLOT_Y + PLOT_H + 50, COLOUR.dim, 13);
-    label(ctx, "to actually be computed", 420, PLOT_Y + PLOT_H + 68, COLOUR.dim, 13);
+    label(ctx, `F = ${freeEnergy(q).toFixed(4)}`, 250, BELOW, COLOUR.ink);
+    label(ctx, `D_KL[q || p(s|o)] = ${divergence(q).toFixed(4)}`, 420, BELOW, COLOUR.dim);
+    label(ctx, "For visualisation only. Needs the posterior", 420, BELOW + 20, COLOUR.dim, 13);
+    label(ctx, "to actually be computed", 420, BELOW + 38, COLOUR.dim, 13);
+    label(ctx, "hover the plot to", 24, BELOW, COLOUR.dim, 13);
+    label(ctx, "move through the updates", 24, BELOW + 18, COLOUR.dim, 13);
   }
 
-  autoplay(el, (i) => {
-    step = i;
+  // Hovering the plot picks the step under the pointer; leaving keeps it, so
+  // the values stay on screen to be read.
+  ctx.canvas.addEventListener("pointermove", (e) => {
+    const rect = ctx.canvas.getBoundingClientRect();
+    const scale = ctx.canvas.width / rect.width;
+    const mx = (e.clientX - rect.left) * scale;
+    const my = (e.clientY - rect.top) * scale;
+    if (my < PLOT_Y - 10 || my > PLOT_Y + PLOT_H + 10) return;
+    const next = Math.round(((mx - PLOT_X) / PLOT_W) * STEPS);
+    if (next < 0 || next > STEPS || next === step) return;
+    step = next;
     draw();
-  }, STEPS + 1, 250);
+  });
+
+  draw();
 });
 
 mountAll();
