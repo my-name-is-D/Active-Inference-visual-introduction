@@ -10,6 +10,7 @@ import {
   ctxOf,
   label,
   drawGrid,
+  drawIsoPlane,
   drawRow,
   drawStateMarks,
   drawStateStrip,
@@ -27,9 +28,12 @@ import "./figure6-curves.js";
 // representation used by A and B throughout the code.
 const LAMPS = [9, 13]; // (2, 5) and (3, 4)
 const HOME = 4; // (1, 5)
-const TRUE_START = 16; // (4, 2), hidden from the agent
+const TRUE_START = 16; // (4, 2), used by the later comparison simulation
+const SCORING_START = 12; // (3, 3), used by the score-explanation figures
 const LIT_MASK = Array.from({ length: N }, (_, s) => LAMPS.includes(s));
 const C = [0.05, 0.1, 0.85];
+// These scores have softmax C: exp(r) is proportional to [1, 2, 17].
+const OBS_REWARD = [0, Math.log(2), Math.log(17)];
 const REWARD = Array.from({ length: N }, (_, s) => (s === HOME ? 10 : 0));
 
 // The lamp placement is not decorative. With the lamps further off, at (5,3)
@@ -58,18 +62,15 @@ const A_LESSON4 = [0, 1, 2].map((o) =>
 const RELIABILITY = 0.7;
 const B_LESSON4 = transitionModel({ rows: 5, cols: COLS, reliability: RELIABILITY });
 
-// The agent knows its column, not its row: (2,4), (3,3), (4,2) zero-indexed.
+// The scoring example starts with three possible cells: (2,4), (3,3), (4,2).
 const START_CELLS = [8, 12, 16];
-const START_CELL = 12; // (3,3), the cell the agent is really in
 const START_BELIEF = Array.from({ length: N }, (_, s) =>
   START_CELLS.includes(s) ? 1 / START_CELLS.length : 0,
 );
 
 // --- c-not-reward ---------------------------------------------------------
-// Figure: C is a three-entry distribution indexed by observations, whereas a
-// reward vector has one unconstrained real number per state. Their visibly
-// different lengths and totals carry the distinction made in "What the agent
-// is after"; adding preferences over states here would blur that contrast.
+// Figure: two representations of the same ordering over observations. The
+// reward scores are chosen so that applying softmax to them gives C exactly.
 mount("c-not-reward", (el) => {
   const W = 760;
   const H = 306;
@@ -78,7 +79,7 @@ mount("c-not-reward", (el) => {
 
   ctx.canvas.setAttribute(
     "aria-label",
-    "A five by five world with two lamps and a home marking, beside a three-entry preference distribution over observations and a twenty-five-entry reward vector over states.",
+    "The same three observations represented as preference probabilities and as reward scores. Softmax of the reward scores gives the preference distribution.",
   );
 
   const WORLD_X = 24;
@@ -87,9 +88,9 @@ mount("c-not-reward", (el) => {
   const PREF_X = 242;
   const PREF_Y = 92;
   const PREF_CELL = 44;
-  const REWARD_X = 430;
-  const REWARD_Y = 112;
-  const REWARD_CELL = 12;
+  const REWARD_X = 492;
+  const REWARD_Y = 92;
+  const REWARD_CELL = 44;
 
   function drawWorld() {
     label(ctx, "the world", WORLD_X, 24, COLOUR.ink, 17);
@@ -97,7 +98,7 @@ mount("c-not-reward", (el) => {
     // The red dot is the agent's actual cell, (3,3), shown only to the reader:
     // its prior spans cells 8, 12 and 16 and it cannot tell which it is in.
     drawGrid(ctx, WORLD_X, WORLD_Y, WORLD_CELL,
-      { lit: LIT_MASK, mark: HOME, agent: START_CELL });
+      { lit: LIT_MASK, mark: HOME, agent: SCORING_START });
     ctx.font = "bold 15px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -115,8 +116,8 @@ mount("c-not-reward", (el) => {
   }
 
   function drawPreferences() {
-    label(ctx, "preference  p(o | C)", PREF_X, 24, COLOUR.ink, 17);
-    label(ctx, "one entry per observation", PREF_X, 43, COLOUR.dim, 13);
+    label(ctx, "C: preference probabilities", PREF_X, 24, COLOUR.ink, 16);
+    label(ctx, "over observations", PREF_X, 43, COLOUR.dim, 13);
     const names = ["dark", "lit", "home"];
     const maxBar = 64;
     for (let o = 0; o < C.length; o++) {
@@ -142,35 +143,39 @@ mount("c-not-reward", (el) => {
     ctx.lineTo(PREF_X + C.length * PREF_CELL - 7, 226);
     ctx.stroke();
     label(ctx, "total = 1.00", PREF_X + 13, 248, COLOUR.agent, 14);
-    label(ctx, "must sum to one", PREF_X + 2, 270, COLOUR.dim, 13);
+    label(ctx, "normalised: total = 1", PREF_X + 2, 270, COLOUR.dim, 13);
   }
 
   function drawReward() {
-    label(ctx, "example reward  r(s)", REWARD_X, 24, COLOUR.ink, 17);
-    label(ctx, "comparison only: one value per state", REWARD_X, 43, COLOUR.dim, 13);
-    label(ctx, "0", REWARD_X + 2, 94, COLOUR.dim, 12);
-    label(ctx, "1", REWARD_X + REWARD_CELL + 2, 94, COLOUR.dim, 12);
-    label(ctx, "2", REWARD_X + 2 * REWARD_CELL + 2, 94, COLOUR.dim, 12);
-    label(ctx, "4", REWARD_X + 4 * REWARD_CELL + 2, 94, COLOUR.agent, 12);
-    label(ctx, "…", REWARD_X + 10 * REWARD_CELL - 1, 94, COLOUR.dim, 12);
-    label(ctx, "24", REWARD_X + 23.5 * REWARD_CELL, 94, COLOUR.dim, 12);
-    for (let s = 0; s < N; s++) {
-      const x = REWARD_X + s * REWARD_CELL;
-      ctx.fillStyle = REWARD[s] === 0 ? "#fff" : COLOUR.agent;
-      ctx.fillRect(x, REWARD_Y, REWARD_CELL - 2, 44);
+    label(ctx, "Reward scores", REWARD_X, 24, COLOUR.ink, 16);
+    label(ctx, "for the same observations", REWARD_X, 43, COLOUR.dim, 13);
+    const names = ["dark", "lit", "home"];
+    const maxBar = 64;
+    const maxReward = Math.max(...OBS_REWARD);
+    for (let o = 0; o < OBS_REWARD.length; o++) {
+      const x = REWARD_X + o * REWARD_CELL;
+      const height = (OBS_REWARD[o] / maxReward) * maxBar;
+      ctx.fillStyle = "#eef1f4";
+      ctx.fillRect(x, REWARD_Y, REWARD_CELL - 7, maxBar);
+      ctx.fillStyle = o === 1 ? COLOUR.lit : COLOUR.neutral;
+      ctx.fillRect(x, REWARD_Y + maxBar - height, REWARD_CELL - 7, height);
       ctx.strokeStyle = COLOUR.rule;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x + 0.5, REWARD_Y + 0.5, REWARD_CELL - 3, 43);
+      ctx.strokeRect(x + 0.5, REWARD_Y + 0.5, REWARD_CELL - 8, maxBar - 1);
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillStyle = COLOUR.dim;
+      ctx.textAlign = "center";
+      ctx.fillText(names[o], x + (REWARD_CELL - 7) / 2, REWARD_Y + maxBar + 18);
+      ctx.fillText(OBS_REWARD[o].toFixed(2), x + (REWARD_CELL - 7) / 2, REWARD_Y + maxBar + 36);
     }
-    label(ctx, "value 10 at state 4 (home)", REWARD_X + 34, 178, COLOUR.agent, 13);
-    ctx.strokeStyle = COLOUR.rule;
-    ctx.lineWidth = 1;
+    ctx.textAlign = "left";
+    ctx.strokeStyle = COLOUR.agent;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(REWARD_X, 226);
-    ctx.lineTo(REWARD_X + N * REWARD_CELL - 2, 226);
+    ctx.lineTo(REWARD_X + OBS_REWARD.length * REWARD_CELL - 7, 226);
     ctx.stroke();
-    label(ctx, "real-valued scores", REWARD_X, 248, COLOUR.ink, 14);
-    label(ctx, "not normalised", REWARD_X, 270, COLOUR.agent, 13);
+    label(ctx, "arbitrary score scale", REWARD_X + 2, 248, COLOUR.ink, 14);
+    label(ctx, "softmax(r) = C", REWARD_X + 2, 270, COLOUR.agent, 13);
   }
 
   drawWorld();
@@ -181,9 +186,8 @@ mount("c-not-reward", (el) => {
   caption.style.margin = "0.75rem 0 0";
   caption.style.color = COLOUR.dim;
   caption.textContent =
-    "C has three competing probabilities, one per possible observation. " +
-    "The reward vector is only a comparison, not part of this active-inference model: " +
-    "here the agent's goal is C over observations.";
+    "Both panels rank the same observations in the same order. Reward uses scores that need not form a probability distribution; " +
+    "this module represents the same preferences as probabilities in C. Applying softmax to these reward scores gives C.";
   el.appendChild(caption);
 });
 
@@ -200,6 +204,33 @@ const STATE_MARKS = [
 const EAST = 3;
 const STEP = scorePolicy(START_BELIEF, B_LESSON4, A_LESSON4, C, [EAST]).trace[0];
 
+// --- scoring-world --------------------------------------------------------
+// The physical situation used by the two score-decomposition widgets. The
+// true state is visible to the reader, while the belief surface shows the
+// positions the agent itself still considers possible.
+mount("scoring-world", (el) => {
+  const W = 760;
+  const H = 270;
+  const ctx = ctxOf(el, W, H);
+  if (!ctx) return;
+  ctx.canvas.setAttribute(
+    "aria-label",
+    "Two identically oriented isometric grids: the physical world with the agent at row three, column three, and its belief with equal probability on three possible cells.",
+  );
+
+  label(ctx, "World", 70, 26, COLOUR.ink, 17);
+  drawIsoPlane(ctx, 145, 76, 25, {
+    lit: LIT_MASK, home: HOME, agent: SCORING_START,
+  });
+  label(ctx, "red dot: true position (3,3)", 55, 218, COLOUR.agent, 14);
+  label(ctx, "visible to the reader, not the agent", 45, 241, COLOUR.dim, 13);
+
+  label(ctx, "Agent belief q(s\u2080)", 475, 26, COLOUR.ink, 17);
+  drawIsoPlane(ctx, 575, 76, 25, { heights: START_BELIEF });
+  label(ctx, "three possible cells", 475, 218, COLOUR.neutral, 14);
+  label(ctx, "probability 1/3 on each", 475, 241, COLOUR.dim, 13);
+});
+
 // --- pragmatic-term -------------------------------------------------------
 // Figure: where q(o | pi) comes from, and how it is scored against C.
 // Serves the pragmatic half of "What the score is made of".
@@ -214,26 +245,45 @@ const STEP = scorePolicy(START_BELIEF, B_LESSON4, A_LESSON4, C, [EAST]).trace[0]
 // They appear in the readout on hover, in index order, every term shown.
 mount("pragmatic-term", (el) => {
   const W = 760;
-  const H = 598;
+  const H = 700;
   const ctx = ctxOf(el, W, H);
   if (!ctx) return;
   ctx.canvas.setAttribute(
     "aria-label",
-    "How the observations expected under a policy are computed from the " +
-      "belief and the observation model A, and scored against the preference C.",
+    "How a current belief is predicted through transition model B for a chosen action, " +
+      "mapped through observation model A, and scored against preference C.",
   );
 
   const CELL = 21;
   const X = 186;
-  const BELIEF_Y = 104;
-  const A_Y = 224;
+  const CURRENT_Y = 82;
+  const BELIEF_Y = 202;
+  const A_Y = 322;
   const A_CELL_H = 26;
-  const OBS_Y = 430;
+  const OBS_Y = 528;
   const OBS_W = 58;
   const OBS_H = 42;
 
-  const predicted = STEP.belief;
-  const outcomes = STEP.outcomes;
+  const ACTION_NAMES = ["north", "south", "west", "east", "stay"];
+  let action = EAST;
+  let currentStep = STEP;
+  let predicted = currentStep.belief;
+  let outcomes = currentStep.outcomes;
+
+  const chooser = document.createElement("label");
+  chooser.style.display = "block";
+  chooser.style.margin = "0.5rem 0";
+  chooser.textContent = "Action to score: ";
+  const select = document.createElement("select");
+  for (let a = 0; a < ACTION_NAMES.length; a++) {
+    const option = document.createElement("option");
+    option.value = String(a);
+    option.textContent = ACTION_NAMES[a];
+    option.selected = a === action;
+    select.appendChild(option);
+  }
+  chooser.appendChild(select);
+  el.insertBefore(chooser, ctx.canvas);
 
   const readout = document.createElement("p");
   readout.style.margin = "0.75rem 0 0";
@@ -244,6 +294,7 @@ mount("pragmatic-term", (el) => {
   // hover is {o, s}: s null means the whole sum for observation o,
   // an index means one cell of A and the one belief bar above it.
   let hover = null;
+  let transitionState = null;
 
   function setReadout(parts) {
     readout.textContent = "";
@@ -262,13 +313,37 @@ mount("pragmatic-term", (el) => {
     label(ctx, "what the agent expects to see", 22, 30, COLOUR.ink, 17);
     label(ctx, "and how much it wants it", 22, 50, COLOUR.dim, 13);
 
+    label(ctx, "q(s\u2080)", 22, CURRENT_Y + 20, COLOUR.ink, 17);
+    label(ctx, "current belief", 22, CURRENT_Y + 38, COLOUR.dim, 12);
+    drawStateStrip(ctx, X, CURRENT_Y, START_BELIEF, {
+      cellW: CELL, barH: 40, colour: COLOUR.neutral,
+    });
+    drawStateMarks(ctx, X, CURRENT_Y + 40, CELL, STATE_MARKS);
+    label(ctx, "q(s\u2081 | \u03c0) = B\u03c0 q(s\u2080)", X, BELIEF_Y - 28, COLOUR.ink, 15);
+
+    if (transitionState !== null) {
+      ctx.strokeStyle = COLOUR.agent;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(X + transitionState * CELL - 1.5, BELIEF_Y - 1.5, CELL - 1, 43);
+      for (let origin = 0; origin < N; origin++) {
+        if (START_BELIEF[origin] > 0 && B_LESSON4[transitionState][origin][action] > 0) {
+          ctx.strokeRect(X + origin * CELL - 1.5, CURRENT_Y - 1.5, CELL - 1, 43);
+        }
+      }
+    }
+
     // The belief over all 25 states.
     label(ctx, "q(s\u2081 | \u03c0)", 22, BELIEF_Y + 20, COLOUR.ink, 17);
-    label(ctx, "after one step east", 22, BELIEF_Y + 38, COLOUR.dim, 12);
+    label(ctx, "after action: " + ACTION_NAMES[action], 22, BELIEF_Y + 38, COLOUR.dim, 12);
     drawStateStrip(ctx, X, BELIEF_Y, predicted, {
       cellW: CELL, barH: 40, colour: COLOUR.neutral,
     });
     drawStateMarks(ctx, X, BELIEF_Y + 40, CELL, STATE_MARKS);
+    if (transitionState !== null) {
+      ctx.strokeStyle = COLOUR.agent;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(X + transitionState * CELL - 1.5, BELIEF_Y - 1.5, CELL - 1, 43);
+    }
 
     // A sparse index row: every fifth state, so a highlighted column can be
     // named. All twenty-five will not fit at this cell width.
@@ -393,13 +468,13 @@ mount("pragmatic-term", (el) => {
     ctx.lineTo(PX + 230, ty - 14);
     ctx.stroke();
     label(ctx, "pragmatic", PX, ty + 6, COLOUR.ink, 15);
-    label(ctx, `+${STEP.pragmatic.toFixed(4)}`, PX + 160, ty + 6, COLOUR.agent, 17);
-    label(ctx, "C is the preference from figure 1", PX, ty + 30, COLOUR.dim, 12);
+    label(ctx, `+${currentStep.pragmatic.toFixed(4)}`, PX + 160, ty + 6, COLOUR.agent, 17);
+    label(ctx, "C is the preference shown above", PX, ty + 30, COLOUR.dim, 12);
   }
 
   function defaultReadout() {
     setReadout([
-      ["Hover a cell of A to trace one term, or an observation bar below to see the whole sum.", "dim"],
+      ["Hover a predicted-state bar to trace B, a cell of A to trace one term, or an observation bar to trace its sum.", "dim"],
     ]);
   }
 
@@ -438,13 +513,27 @@ mount("pragmatic-term", (el) => {
     setReadout(parts);
   }
 
+  select.addEventListener("change", () => {
+    action = Number(select.value);
+    currentStep = scorePolicy(START_BELIEF, B_LESSON4, A_LESSON4, C, [action]).trace[0];
+    predicted = currentStep.belief;
+    outcomes = currentStep.outcomes;
+    hover = null;
+    transitionState = null;
+    defaultReadout();
+    draw();
+  });
+
   ctx.canvas.addEventListener("mousemove", (event) => {
     const rect = ctx.canvas.getBoundingClientRect();
     const scale = ctx.canvas.width / rect.width;
     const mx = (event.clientX - rect.left) * scale;
     const my = (event.clientY - rect.top) * scale;
     let next = null;
-    if (my >= A_Y && my < A_Y + 3 * A_CELL_H && mx >= X) {
+    let nextTransition = null;
+    if (my >= BELIEF_Y && my <= BELIEF_Y + 40 && mx >= X && mx < X + N * CELL) {
+      nextTransition = Math.floor((mx - X) / CELL);
+    } else if (my >= A_Y && my < A_Y + 3 * A_CELL_H && mx >= X) {
       const o = Math.floor((my - A_Y) / A_CELL_H);
       const s = Math.floor((mx - X) / CELL);
       if (s >= 0 && s < N) next = { o, s };
@@ -452,17 +541,19 @@ mount("pragmatic-term", (el) => {
       const o = Math.floor((mx - X) / OBS_W);
       if (o >= 0 && o < 3) next = { o, s: null };
     }
-    const same = JSON.stringify(next) === JSON.stringify(hover);
+    const same = JSON.stringify(next) === JSON.stringify(hover) && nextTransition === transitionState;
     if (!same) {
       hover = next;
-      if (hover === null) defaultReadout();
+      transitionState = nextTransition;
+      if (transitionState !== null) traceTransition(transitionState);
+      else if (hover === null) defaultReadout();
       else if (hover.s === null) traceObservation(hover.o);
       else traceCell(hover.o, hover.s);
       draw();
     }
   });
   ctx.canvas.addEventListener("mouseleave", () => {
-    if (hover !== null) { hover = null; defaultReadout(); draw(); }
+    if (hover !== null || transitionState !== null) { hover = null; transitionState = null; defaultReadout(); draw(); }
   });
 
   el.appendChild(readout);
@@ -667,7 +758,7 @@ function bestFixedPoliciesByFirstAction(prior, B, A, preferences, horizon) {
 }
 
 // --- policies-compared ----------------------------------------------------
-// Figure 3 uses the finalized Figure 6 world and its "See home marker" task:
+// The policy comparison uses the finalized replay world and its "See home marker" task:
 // same A, B=.6, prior and C. The earlier one-step-crossover sketch was for a
 // different world and does not hold here: east is best even at horizon one.
 //
@@ -832,7 +923,7 @@ mount("policies-compared", (el) => {
     const rows = branching ? branchingRows(horizon) : fixedRows(horizon);
     const oneStep = branching ? branchingRows(1) : fixedRows(1);
 
-    label(ctx, "Home-marker task \u00b7 same A, B, C and starting belief as Figure 1", 22, 26, COLOUR.ink, 16);
+    label(ctx, "Home-marker task \u00b7 shared A, B, C and starting belief", 22, 26, COLOUR.ink, 16);
     label(ctx, branching
       ? "Later actions branch on possible observations; numbers in parentheses are their probabilities"
       : "Each column is a complete policy chosen for this horizon; strips are predictions, not observations",
@@ -941,10 +1032,10 @@ mount("policies-compared", (el) => {
 });
 
 // --- efe-signs ------------------------------------------------------------
-// Figure 3 bis, between the algebra and Figure 4: use the same Figure 3
-// observation task and the same three first actions, but score only one step.
+// The sign comparison uses the same observation task and three first actions
+// as the policy comparison, but scores only one step.
 // This isolates the signs. A more negative epistemic contribution helps;
-// a smaller non-negative pragmatic cost also helps. Figure 4 will handle
+// a smaller non-negative pragmatic cost also helps. The counterfactual handles
 // whole-policy totals and changing C, so this figure has no extra controls.
 mount("efe-signs", (el) => {
   const W = 760;
@@ -952,7 +1043,7 @@ mount("efe-signs", (el) => {
   const ctx = ctxOf(el, W, H);
   if (!ctx) return;
   ctx.canvas.setAttribute("aria-label",
-    "One-step expected free energy for east, north and west in Figure 3. " +
+    "One-step expected free energy for east, north and west from the shared starting belief. " +
     "Epistemic contributions are zero or negative; pragmatic costs are positive. " +
     "East has the lowest total score.");
 
@@ -978,7 +1069,7 @@ mount("efe-signs", (el) => {
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    label(ctx, "One step from Figure 3's starting belief", 22, 28, COLOUR.ink, 17);
+    label(ctx, "One-step scores from the shared starting belief", 22, 28, COLOUR.ink, 17);
     label(ctx, "Same A, B and observation preference C · lower G is better", 22, 50, COLOUR.dim, 13);
     label(ctx, "action", 31, 86, COLOUR.dim, 13);
     label(ctx, "epistemic  −information gain", 154, 86, COLOUR.dim, 13);
@@ -1025,7 +1116,7 @@ mount("efe-signs", (el) => {
 });
 
 // --- preference-counterfactual --------------------------------------------
-// Figure 4 holds Figure 3's best fixed sequence for each of its three shown
+// The counterfactual holds the best fixed sequence for each of the three shown
 // first actions constant at each chosen horizon. The slider changes the
 // horizon and thus the sequences; only the C toggle holds them constant.
 // With uniform preferences over the
@@ -1045,7 +1136,7 @@ mount("preference-counterfactual", (el) => {
   const short = ["N", "S", "W", "E", "stay"];
   const cache = new Map();
 
-  // Same exhaustive selection as Figure 3's fixedRows. The selected policy
+  // Same exhaustive selection as the policy comparison. The selected policy
   // depends on the ORIGINAL C, never on the flatten-C toggle.
   function policies(horizon) {
     if (cache.has(horizon)) return cache.get(horizon);
@@ -1097,7 +1188,7 @@ mount("preference-counterfactual", (el) => {
   table.className = "efe-counterfactual-table";
   const head = document.createElement("thead");
   const headerRow = document.createElement("tr");
-  for (const heading of ["Figure 3 fixed sequence", "epistemic ≤ 0", "pragmatic ≥ 0", "G ↓"]) {
+  for (const heading of ["Fixed sequence", "epistemic ≤ 0", "pragmatic ≥ 0", "G ↓"]) {
     const th = document.createElement("th");
     th.textContent = heading;
     headerRow.appendChild(th);
@@ -1143,7 +1234,7 @@ mount("preference-counterfactual", (el) => {
     ]));
     preference.textContent = flattened
       ? `Uniform C: dark = lit = home marker = 1/3. Every policy's pragmatic cost is ${h} × ln 3 = ${(h * Math.log(3)).toFixed(4)}.`
-      : `Figure 3 C: dark ${originalC[0].toFixed(3)}, lit ${originalC[1].toFixed(3)}, home marker ${originalC[2].toFixed(3)}.`;
+      : `Original C: dark ${originalC[0].toFixed(3)}, lit ${originalC[1].toFixed(3)}, home marker ${originalC[2].toFixed(3)}.`;
     body.replaceChildren();
     selected.forEach((row, i) => {
       const score = scores[i];
@@ -1165,7 +1256,7 @@ mount("preference-counterfactual", (el) => {
     });
     explanation.textContent = flattened
       ? "At this horizon, the C toggle keeps the action sequences and epistemic values fixed. Uniform C gives every row the same pragmatic cost, so only expected information gain separates their G scores."
-      : "The horizon slider selects Figure 3's best fixed sequences for east, north and west at that length. The C toggle then rescores those same sequences without choosing new ones.";
+      : "The horizon slider selects the best fixed sequences for east, north and west at that length. The C toggle then rescores those same sequences without choosing new ones.";
   }
   horizon.addEventListener("input", draw);
   flatToggle.addEventListener("change", draw);
@@ -1173,9 +1264,9 @@ mount("preference-counterfactual", (el) => {
 });
 
 // --- scores-to-probabilities ----------------------------------------------
-// Figure 5 uses the three fixed sequences shown in Figure 4 at its default
-// horizon 3 and original C. The softmax here is conditional on these three
-// candidates; Figure 6's replay agents instead rank all policies and act
+// The probability widget uses the three fixed sequences from the counterfactual
+// at its default horizon 3 and original C. The softmax here is conditional on these three
+// candidates; the replay agents instead rank all policies and act
 // greedily. Gamma changes this display's probabilities, never its G scores.
 mount("scores-to-probabilities", (el) => {
   el.classList.add("policy-precision");
@@ -1212,7 +1303,7 @@ mount("scores-to-probabilities", (el) => {
 
   const context = document.createElement("p");
   context.className = "policy-precision-context";
-  context.textContent = "Figure 4's three original-C sequences at horizon 3. " +
+  context.textContent = "The three original-C sequences at horizon 3. " +
     "The softmax is over these three displayed candidates only.";
   el.appendChild(context);
 
