@@ -26,13 +26,17 @@ $$p(o \mid C)$$
 
 Larger probabilities mark more preferred observations. A sharply concentrated $C$ expresses a strong preference for one outcome; a flatter $C$ treats several outcomes as similarly acceptable. Because $C$ is a probability distribution, its entries sum to one.
 
+> **Reward**
+>
+> A **reward function** attaches a number to an outcome, and the agent's objective is to collect as much of it as possible over the run. Higher means better, and nothing constrains the scale: rewards may be negative, and they need not sum to anything.
+
 This is the convention used in this module, not a universal definition of preference. Active-inference models may instead place preferences over states, and reward-based models may assign rewards to either states or observations. Indexing therefore does not, by itself, distinguish $C$ from reward.
 
 Nor must $C$ and reward express different goals. Given reward scores $r(o)$ over the same observations, an equivalent preference distribution can be formed with
 
 $$p(o \mid C) = \operatorname{softmax}(r(o)) \propto \exp(r(o))$$
 
-The widget shows this mapping. Both panels rank dark, lit, and home in the same order; the reward panel uses scores that need not form a probability distribution, while $C$ expresses their relative desirability as probabilities.
+The widget shows this mapping. Both panels rank dark, lit, and home in the same order, and the two panels differ only in the currency that ranking is expressed in: unbounded scores on one side, probabilities that sum to one on the other.
 
 <widget id="c-not-reward"></widget>
 
@@ -320,15 +324,15 @@ This choice of preference is separate from the choice between fixed and sophisti
 >
 > $$= \underbrace{-\mathbb{E}_{q(o,s\mid\pi)}\big[\log p(o,s\mid C)\big]}_{\text{expected energy}} - \underbrace{H\big[q(s\mid\pi)\big]}_{\text{entropy}}$$
 >
-> The first line is the one used above, though you will often see its epistemic term written with the expectation over $o$ and $s$ together. Both are correct.
+> The epistemic and pragmatic form is the one used above, though you will often see its epistemic term written with the expectation over $o$ and $s$ together. Both are correct.
 >
-> The second line says the same thing in terms of how far the expected observations sit from the preferred ones, and how uninformative the sensor is likely to be at the states the policy visits. The third and fourth are where preferences over states appear, and note the sign: the third line is an inequality, so those forms bound $G$ rather than equalling it. 
+> Ambiguity and risk over outcomes says the same thing in terms of how far the expected observations sit from the preferred ones, and how uninformative the sensor is likely to be at the states the policy visits. Risk over states and the expected energy form are where preferences over states appear, and note the sign: risk over states is reached by an inequality, so it bounds $G$ rather than equalling it.
 >
 > The state-risk expression in this box is distinct from the state-preference score used in our simulations above, which retains expected information gain and replaces the observation-preference cost with a state-preference cost.
 >
 > For the derivation and its assumptions, see Champion et al., [*Reframing the Expected Free Energy: Four Formulations and a Unification*, sections 5.3–6, especially equation (6)](https://arxiv.org/html/2402.14460v1#S6).
 >
-> The second grouping is what most implementations compute, and it is taken up in a later section.
+> Ambiguity and risk over outcomes is what most implementations compute, including the planner behind the figures in this module. Ambiguity depends only on the sensor's column entropies, a fixed property of *A* that is worked out once and reused for every policy, whereas the epistemic and pragmatic form needs a separate posterior for each observation the policy might produce.
 
 
 
@@ -369,13 +373,21 @@ Both tasks assign **C(home)=0.50**: to the home reading under observation prefer
 
 A lamp can help localisation in either task. Under the observation preference, its reading is also desirable in itself; under the state preference, every non-home cell has the same immediate pragmatic cost.
 
+Three of the five plan with the model. The other two do not, so they need a word of their own.
+
+> **Action values**
+>
+> A **Q-learner** does not plan with a model. It keeps an **action value**: a running estimate of how much reward taking an action in a given situation eventually earns, learned from many trials. After each step, the estimate moves towards the reward just received plus the best value available from the situation the step led to, so value propagates backwards from rewarding outcomes to the steps that reach them. Acting is then a lookup rather than a search: take the highest-valued action for the current situation.
+>
+> The reward here is $\log p(o \mid C)$, the same preference the other agents score against, so the comparison is between ways of using one objective, not between different objectives.
+
 The five agents differ in how they choose actions:
 
 - **AIF** scores fixed action sequences using preferences and expected information gain, then replans after each reading.
 - **Sophisticated AIF** uses the same terms but allows future actions to depend on possible readings.
-- **Reward planner** scores fixed sequences using preference utility alone.
-- **Belief Q** learns action values from experience, using its full position belief.
-- **Tabular Q** learns action values indexed only by its latest reading.
+- **Reward planner** scores fixed sequences by expected preference alone: the same pragmatic term the AIF agents use, with the information term dropped.
+- **Belief Q** learns action values from its full position belief, approximating them as a smooth function of that belief rather than storing one value per cell.
+- **Tabular Q** stores one value per reading, so every cell producing the same reading shares an entry.
 
 For both Q learners, training provides utility based on the actual state in the hidden-home task. This signal can reveal home visits during training, although the sensor cannot distinguish home during the displayed runs.
 
@@ -389,7 +401,7 @@ As one walk cannot answer that, here are results from 300 runs per agent in each
 
 In the hidden-home task, beliefs become less concentrated on average, yet AIF’s most likely position becomes more often correct. **Confidence and accuracy are different:** increasing certainty does not necessarily mean correct localisation.
 
-AIF reaches home and identifies its position more often than the fixed-sequence reward planner. With the same model, prior, horizon and preferences, this comparison shows the benefit of including expected information gain in this task. Sophisticated AIF performs similarly to AIF here; anticipating observation-dependent actions adds little on these measures in this simple world.
+AIF reaches home and identifies its position more often than the fixed-sequence reward planner. Because both use fixed action sequences, this comparison isolates the expected-information term in this task. A separate comparison asks what branching adds within active inference: sophisticated AIF performs similarly to fixed-sequence AIF on these measures. This does not show that branching is generally unnecessary, or compare sophisticated AIF with a branching reward planner; no branching reward planner was run.
 
 Tabular Q’s results depend strongly on training: in the home-marker task, 2 training seeds produced no successful evaluation runs, while the third achieved 75% success. The plotted interval does not capture this variation across training seeds.
 
@@ -397,17 +409,15 @@ Tabular Q’s results depend strongly on training: in the home-marker task, 2 tr
 
 An action can help the agent in two ways: by bringing it closer to a preferred outcome, and by providing information about where it is. Expected free energy puts both consequences into the action score.
 
-The hidden-home task makes the benefit visible. Every non-home cell has the same immediate pragmatic cost, yet a lamp can still be worth approaching because its observation helps localisation. Across the repeated runs, including expected information gain improves both home-reaching and position identification relative to the fixed-sequence reward planner.
+The hidden-home task makes the benefit visible. Every non-home cell has the same immediate pragmatic cost, yet a lamp can still be worth approaching because its observation helps localisation. Across the repeated runs, adding expected information gain to fixed-sequence planning improves both home-reaching and position identification relative to the otherwise matched fixed-sequence reward planner.
 
-Sophisticated active inference extends this reasoning: the agent anticipates how an observation could change its belief and therefore its next action. That additional planning brings little improvement on the measures shown here, but makes the dependence of future decisions on future observations explicit.
+Sophisticated AIF is included to test a separate question: does anticipating observation-dependent continuations improve on fixed-sequence AIF? In this world, it changes little. Informative actions already score well over the short horizon, and fixed-sequence AIF replans after every observation that actually arrives. The comparison therefore shows that AIF's advantage over the fixed-sequence reward planner comes mainly from expected information gain here (rather than from sophisticated branching). More demanding tasks (where an informative first action enables sharply different later actions) would make the distinction more consequential.
 
-These results show where explicitly valuing information helps: the agent must locate itself to reach home, and the fixed-sequence reward planner does not anticipate how future observations could change its actions. Including expected information gain improves performance in this comparison.
-
-A reward planner can also seek information when it branches over possible observations and recognises how learning would improve later decisions. Such a planner can perform well in complex environments. The practical difficulty is computing those branches: as the number of actions, observations and planning steps grows, both reward-based and sophisticated active-inference planners must usually approximate the search.
+The experiment does not compare active inference with a branching reward planner. Such a planner can seek information instrumentally when an observation improves later reward: it can value visiting a lamp because localisation enables a better subsequent action, even without an explicit information-gain term. The practical difficulty is computing those branches; as the number of actions, observations and planning steps grows, both reward-based and sophisticated active-inference planners must usually approximate the search.
 
 Active inference offers an explicit reason to seek informative observations, which can help when a limited planner would otherwise overlook useful exploration. Its advantage depends on whether that information serves the task and whether the model predicts it accurately. It can also spend effort resolving uncertainty that contributes little to the measured goal.
 
-The comparison therefore supports a specific conclusion: in this environment, with this model and planning horizon, including expected information gain improves localisation and home-reaching over the fixed-sequence reward baseline.
+The comparison therefore supports a specific conclusion: in this environment, with this model and planning horizon, including expected information gain improves localisation and home-reaching over the fixed-sequence reward baseline. It does not establish an advantage over reward planning that conditions future actions on future observations.
 
 The central lesson is that useful information can enter the choice of action before the observation arrives. The agent can choose where to go partly because of what it expects to learn there.
 
