@@ -269,9 +269,9 @@ The calculation has the same form: weight each preference cost by the probabilit
 For example, assign probability $c_{\mathrm{home}}$ to home and the same smaller probability $c_{\mathrm{other}}$ to each other cell. The pragmatic cost becomes:
 
 $$
--q(s_\tau=\mathrm{home}\mid\pi)\log c_{\mathrm{home}}
--
-\big[1-q(s_\tau=\mathrm{home}\mid\pi)\big]\log c_{\mathrm{other}}
+\underbrace{-q(s_\tau=\mathrm{home}\mid\pi)\log c_{\mathrm{home}}}_{\text{home contribution}}
+\;+\;
+\underbrace{-\big[1-q(s_\tau=\mathrm{home}\mid\pi)\big]\log c_{\mathrm{other}}}_{\text{non-home contribution}}
 $$
 
 As the predicted probability of being home rises, this cost falls. The agent evaluates that probability using its belief; it does not need access to its true position.
@@ -350,7 +350,7 @@ $\gamma$ is called the **precision** and is positive. It sets how sharply the be
 
 <widget id="scores-to-probabilities"></widget>
 
-The policy-probability widget illustrates what $\gamma$ does to their probabilities, not a distribution over every possible policy. The probabilities use the full-precision scores, rather than the rounded numbers printed in the table.
+The policy-probability widget illustrates what $\gamma$ does to their probabilities.
 $\gamma$ can also be learned rather than fixed, so that the agent's confidence in its own planning adjusts as it goes. And a second prior over policies, written $E$, encodes a bias towards certain ways of behaving regardless of what they score: habits, in effect. We will introduce this in module 6.
 
 ## Watching it run
@@ -393,10 +393,23 @@ AIF reaches home and identifies its position more often than the fixed-sequence 
 
 Tabular Q’s results depend strongly on training: in the home-marker task, 2 training seeds produced no successful evaluation runs, while the third achieved 75% success. The plotted interval does not capture this variation across training seeds.
 
-## What the detour shows
+## What looking makes possible
 
-No agent was given an explicit bonus for reaching a lamp. AIF's information term can make a lamp route attractive because a lamp reading can narrow its position belief. A reward planner can also value a useful reading when it plans actions contingent on future observations; the fixed-sequence reward planner here does not make such branches. Which route wins depends on the model, preferences, horizon and actual readings, so one walk is not a general performance claim.
+An action can help the agent in two ways: by bringing it closer to a preferred outcome, and by providing information about where it is. Expected free energy puts both consequences into the action score.
 
+The hidden-home task makes the benefit visible. Every non-home cell has the same immediate pragmatic cost, yet a lamp can still be worth approaching because its observation helps localisation. Across the repeated runs, including expected information gain improves both home-reaching and position identification relative to the fixed-sequence reward planner.
+
+Sophisticated active inference extends this reasoning: the agent anticipates how an observation could change its belief and therefore its next action. That additional planning brings little improvement on the measures shown here, but makes the dependence of future decisions on future observations explicit.
+
+These results show where explicitly valuing information helps: the agent must locate itself to reach home, and the fixed-sequence reward planner does not anticipate how future observations could change its actions. Including expected information gain improves performance in this comparison.
+
+A reward planner can also seek information when it branches over possible observations and recognises how learning would improve later decisions. Such a planner can perform well in complex environments. The practical difficulty is computing those branches: as the number of actions, observations and planning steps grows, both reward-based and sophisticated active-inference planners must usually approximate the search.
+
+Active inference offers an explicit reason to seek informative observations, which can help when a limited planner would otherwise overlook useful exploration. Its advantage depends on whether that information serves the task and whether the model predicts it accurately. It can also spend effort resolving uncertainty that contributes little to the measured goal.
+
+The comparison therefore supports a specific conclusion: in this environment, with this model and planning horizon, including expected information gain improves localisation and home-reaching over the fixed-sequence reward baseline.
+
+The central lesson is that useful information can enter the choice of action before the observation arrives. The agent can choose where to go partly because of what it expects to learn there.
 
 ## To go further
 
@@ -405,3 +418,7 @@ No agent was given an explicit bonus for reaching a lamp. AIF's information term
 - Smith, Friston and Whyte, [“A step-by-step tutorial on active inference and its application to empirical data”](https://www.sciencedirect.com/science/article/pii/S0022249621000973), follows the same ideas into worked simulations, including exploration and exploitation, and derives the expected-free-energy decompositions in its appendix.
 
 - Millidge, Tschantz and Buckley, [“Whence the Expected Free Energy?”](https://direct.mit.edu/neco/article/33/2/447/95645/Whence-the-Expected-Free-Energy), is the critical companion: it examines where the objective comes from and which conclusions require additional assumptions.
+
+- Da Costa et al., [“Reward Maximization Through Discrete Active Inference”](https://direct.mit.edu/neco/article/35/5/807/115249/Reward-Maximization-Through-Discrete-Active), establishes conditions under which active inference selects reward-optimal actions, clarifying its relationship to reward-based planning and the role of sophisticated inference.
+
+- Tschantz et al., [“Reinforcement Learning through Active Inference”](https://arxiv.org/abs/2002.12636), evaluates an active-inference algorithm on continuous-control benchmarks, including sparse-reward tasks. It provides empirical examples of useful exploration, rather than a general guarantee of superiority over reinforcement learning.

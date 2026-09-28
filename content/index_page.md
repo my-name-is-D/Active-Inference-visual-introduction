@@ -36,6 +36,8 @@ the relevant chapter, section, or equation.
 | [Lanillos et al., “Active inference in robotics and artificial agents”](https://arxiv.org/abs/2112.01871) | Applications, connections to other methods, and open challenges | 4–5 |
 | [Millidge, Tschantz & Buckley, “Whence the Expected Free Energy?”](https://direct.mit.edu/neco/article/33/2/447/95645/Whence-the-Expected-Free-Energy) | A critical look at where expected free energy comes from and which assumptions it needs | 4 |
 | [Champion et al., “Reframing the Expected Free Energy”](https://arxiv.org/abs/2402.14460) | Four formulations of expected free energy and how they relate | 4 |
+| [Da Costa et al., “Reward Maximization Through Discrete Active Inference”](https://direct.mit.edu/neco/article/35/5/807/115249/Reward-Maximization-Through-Discrete-Active) | Conditions for reward-optimal action selection and the role of sophisticated inference | 4 |
+| [Tschantz et al., “Reinforcement Learning through Active Inference”](https://arxiv.org/abs/2002.12636) | Empirical comparisons on continuous-control benchmarks, including sparse-reward exploration | 4 |
 
 These are routes onward rather than prerequisites. The modules are intended to
 stand on their own.

@@ -12,9 +12,9 @@ Learning the two tables does not pose the same problem. To learn *A*, the agent 
 
 We will separate those dependencies in three comparisons:
 
-1. learn *A* while *B* is known;
+1. learn *A* while *B* is known, first at night and then by day;
 2. learn *B* while *A* is known, first at night and then by day;
-3. learn *A* and *B* together.
+3. learn *A* and *B* together, by day.
 
 And we will introduce two new changes in the world, a part of the world in under work, thus changing the observation to expect there, and adding walls to an environment that did not have any. Moreoever, this world that has known only darkness will also know daylight now, which decreases the aliasing of the environment, the dead-reckoning of the agent and improve localisation overall.
 
@@ -46,16 +46,16 @@ outcome needs a positive pseudocount, so “no observations yet” means using a
 
 Write $a$, in lower case, for the counts, and keep *A* for the observation model the agent plans with. They are different objects: $a$ grows without limit and carries the confidence, *A* is the columns of $a$ normalised. The literature uses the same convention, and it uses $b$ and *B* the same way. To not confuse with the action $a$ (sometime $u$), not used in the same context.
 
-The addition is weighted by the belief, because the agent is not certain where it is. If its belief is spread across four cells, the count is shared among them considering its confidence over each cell being its current localisation. This fractional update is an expected-count approximation. When the state is known, adding 1 to its column is exact conjugate learning; with an uncertain state, the exact parameter posterior is generally a mixture of Dirichlets rather than a single Dirichlet for each column.
+The addition is weighted by the belief, because the agent is not certain where it is. If its belief is spread across four cells, the count is shared among them considering its confidence over each cell being its current localisation. This fractional update is an **expected-count approximation**. When the state is known, adding 1 to its column is exact conjugate learning; with an uncertain state, the exact parameter posterior is generally a mixture of Dirichlets rather than a single Dirichlet for each column.
 
 The estimate of *A* is the counts, normalised:
 $$A_{ij} = \frac{a_{ij}}{\sum_k a_{kj}}$$
 
 where $A_{ij} = p(o = i \mid s = j)$, as in module 1: $i$ the observation, $j$ the state.
 
-The loop is **predict → move →see → update**. For the chosen action, the agent first predicts where it will be and what it may observe, using its current *A* and *B*. It executes the action and receives the observation. Only then does it update its state belief, use that updated belief to update the counts, and normalise them for the next prediction. For *B*, the count update uses the joint belief about the previous and current states after the new observation.
+The loop is **predict → move →see → update**, and we are now in the update phase. For the chosen action, the agent first predicts where it will be and what it may observe, using its current *A* and *B*. It executes the action and receives the observation. Only then does it update its state belief, use that updated belief to update the counts, and normalise them for the next prediction. For *B*, the count update uses the joint belief about the previous and current states after the new observation.
 
-The agent learns after each observation,. The current observation is incorporated into the state belief using the model available before that observation; the resulting count update prepares the model for the next prediction.
+The agent learns after each observation. The current observation is incorporated into the state belief using the model available before that observation; the resulting count update prepares the model for the next prediction.
 
 ## The counts carry two things
 
@@ -89,6 +89,43 @@ $$\text{novelty} = \mathbb{E}_{q(s_\tau \mid \pi)\,p(o_\tau \mid s_\tau)}\Big[D_
 For a hypothetical state $s_\tau$, observing $o_\tau$ adds one to the corresponding Dirichlet count. The KL divergence measures that update, and the expectation averages it over the states and observations predicted under the policy. This is **expected parameter information gain**. Equivalently, it is conditional mutual information between the model parameters and the next observation; the next section writes the same quantity as a difference of entropies.
 
 This form conditions on knowing which state generated the observation. The acting agent does not know that state and therefore spreads its count update according to its state belief. Novelty is consequently a planning score under the factorisation $q(s_\tau\mid\pi)q(\theta)$, not the exact KL change caused by the agent's later fractional update.
+
+> **Implementation view: score a possible update before collecting data**
+>
+> Store two arrays: `counts[o, s]`, the positive Dirichlet parameters, and `belief[s]`, the current position probabilities. Normalising each column of `counts` gives *A*. Keep the counts as well: *A* alone cannot distinguish a well-established estimate from one based on little evidence.
+>
+> During planning, novelty answers: **how much could the next observation teach this model?** The following pseudocode scores each candidate action `u` over one step. `pragmatic_cost[u]` and `state_information_gain[u]` are computed from the current model and predicted belief as in module 4; the latter is the non-negative expected information gain.
+>
+>     A = normalise_columns(counts)
+>     N = zeros(number_of_states)
+>     score = zeros(number_of_actions)
+>
+>     # Once per planning call: score every column, independent of the action.
+>     for s in states:
+>         column = counts[:, s]
+>         total = sum(column)
+>         for o in observations:
+>             gain = log(total / column[o]) + digamma(column[o] + 1) - digamma(total + 1)
+>             N[s] += (column[o] / total) * gain
+>
+>     # Per candidate action: weight those scores by where the action leads.
+>     for u in actions:
+>         predicted = B[:, :, u] @ belief
+>         novelty = predicted @ N
+>         score[u] = pragmatic_cost[u] - state_information_gain[u] - novelty
+>
+> `gain` is $D_{\mathrm{KL}}[\mathrm{Dir}(a+e_o)\,\|\,\mathrm{Dir}(a)]$, the divergence between two **Dirichlet distributions**, not between their normalised mean columns. The general Dirichlet KL needs four log-gamma terms; because adding one observation changes a single entry, it collapses to the line above, derived in the box further down. The weight $a_o/\bar a$ is the column's predictive probability for $o$, which is also its entry in *A*. The resulting novelty is non-negative and is subtracted because lower action scores are preferred.
+>
+> **Planning must not change the stored counts.** Only after executing the selected action and receiving the real observation do we learn:
+>
+>     chosen = argmin(score)
+>     predicted_for_chosen_action = B[:, :, chosen] @ belief
+>     observed = execute_and_observe(chosen)
+>     belief = normalise(A[observed, :] * predicted_for_chosen_action)
+>     counts[observed, :] += belief          # the row form of a + o (outer) q(s)
+>     A = normalise_columns(counts)
+>
+> This real update distributes evidence across possible states; the planning calculation above conditions each hypothetical update on a particular state. That is the approximation described above.
 
 ## From one column to a policy
 
@@ -141,7 +178,13 @@ Novelty is a number attached to a policy, so it goes into the score.
 
 $G$ had two terms. It now has three:
 
-$$G(\pi, \tau) = \underbrace{-\,\mathbb{E}_{q(s_\tau\mid\pi)p(o_\tau\mid s_\tau)}\big[D_{\mathrm{KL}}[\,q(\theta \mid o_\tau, s_\tau) \,\|\, q(\theta)\,]\big]}_{\text{novelty}} \;  \underbrace{-\,\mathbb{E}_{q(o_\tau\mid\pi)}\big[D_{\mathrm{KL}}[\,q(s_\tau \mid o_\tau, \pi) \,\|\, q(s_\tau \mid \pi)\,]\big]}_{\text{epistemic value}} \;\underbrace{-\,\mathbb{E}_{q(o_\tau \mid \pi)}\big[\log p(o_\tau \mid C)\big]}_{\text{pragmatic value}}$$
+$$
+\begin{aligned}
+G(\pi, \tau) ={}& \underbrace{-\,\mathbb{E}_{q(s_\tau\mid\pi)p(o_\tau\mid s_\tau)}\big[D_{\mathrm{KL}}[\,q(\theta \mid o_\tau, s_\tau) \,\|\, q(\theta)\,]\big]}_{\text{novelty}} \\[1em]
+& \underbrace{-\,\mathbb{E}_{q(o_\tau\mid\pi)}\big[D_{\mathrm{KL}}[\,q(s_\tau \mid o_\tau, \pi) \,\|\, q(s_\tau \mid \pi)\,]\big]}_{\text{epistemic value}} \\[1em]
+& \underbrace{-\,\mathbb{E}_{q(o_\tau \mid \pi)}\big[\log p(o_\tau \mid C)\big]}_{\text{pragmatic value}}
+\end{aligned}
+$$
 
 Nothing about the other two has changed. The agent still scores what a policy would deliver and what it would reveal about its position, and now also what it would reveal about its model.
 
@@ -170,7 +213,14 @@ Each unknown observation over state has the same total prior concentration, 0.5,
 
 $$a_{os}=\frac{0.5}{K},\qquad s\in\text{works}.$$
 
-Thus, at night, the uncertain column starts with pseudocounts \([0.25,0.25]\), whose total concentration is \(0.5\). By day, the same total concentration is divided equally among six possible observation categories, so each pseudocount is \(0.5/6=1/12\). Daylight provides more distinguishable observations without giving the agent a more confident prior.
+At night there are two possible observations, by day six:
+
+$$\begin{aligned}
+K=2:\quad a_{os}&=\frac{0.5}{2}=0.25,\\[0.6em]
+K=6:\quad a_{os}&=\frac{0.5}{6}=\frac{1}{12}.
+\end{aligned}$$
+
+Both columns total 0.5. Daylight provides more distinguishable observations without giving the agent a more confident prior.
 
 At night the sensor distinguishes lamps from dark cells. By day it also distinguishes Home, the grey path, green cells and the shared W works marker.
 
@@ -203,9 +253,13 @@ Read the curves from 100% = starting error towards 0% = model learned. Lower is 
 The middle curve is a control: the original agent used in the previous module held *A* fixed, whereas this control updates *A* after every observation.
 Both AIF conditions use the same update equation. The only difference is that one includes $-\mathrm{IG}_A$ in its action score which directs action towards uncertain observation columns.
 
-**At night: learn dark vs lit**. Each works column starts uncertain between these two observations. Because the works cells actually appear dark, a falling curve means that the agent is learning their dark-observation probability.
+**At night: learn dark vs lit.** Each works column starts uncertain between these two observations. Because the works cells appear dark, a falling error curve indicates that the estimated observation probabilities are approaching the true, dark-dominated distribution.
 
-**By day: learn what kind of place this is**. Daylight adds the W observation category, so the day condition tests whether the agent learns that these cells belong to the works area. Active inference visits the works more often, but its error does not finish lower. The path maps show why: its visits concentrate on some works cells, while all three produce the same W observation. Seeking information does not guarantee balanced evidence.
+**By day: learn what kind of place this is.** Daylight adds the W observation category, so the day condition tests whether the agent learns the observation distribution characteristic of the works area. AIF with *A* novelty visits the works far more often than the random walk, yet finishes with slightly more error remaining.
+
+The path maps illustrate how more visits can coexist with more remaining error. In the displayed runs, the random walk distributes its visits more evenly across the three works cells, while the novelty-seeking agent concentrates its visits on one of them. The reported error averages all three columns: learning one column well cannot fully compensate for gathering little evidence about the others.
+
+Novelty is computed per column, so the rule should send the agent to whichever column it knows least about. What it cannot weigh is the cost of getting there. Reaching a distant works cell means several steps that teach it nothing, while the cell it is standing beside offers a smaller gain immediately. Choosing the best next step is not the same as covering the map, and here the greedy choice is the one that leaves a column starved.
 
 
 ## Letting a later observation clarify an earlier step
@@ -273,7 +327,7 @@ available to the agent. -->
 
 ## Learning where steps lead
 
-The agent has learned what observations to expect in each state. It can use the same counting method to learn where its actions lead. One column of *A* asks, “What will I observe in this state?” One column of *B* asks, “If I start in state $j$ and take action $u$, where will I arrive?”. (Earlier modules used \(a\) for an action. From this module onward, \(a\) denotes the counts underlying A, so we write \(u\) for an action.)
+The agent has learned what observations to expect in each state. It can use the same counting method to learn where its actions lead. One column of *A* asks, “What will I observe in this state?” One column of *B* asks, “If I start in state $j$ and take action $u$, where will I arrive?”. (Earlier modules used $a$ for an action. From this module onward, $a$ denotes the counts underlying A, so we write $u$ for an action.)
 
 As in module 2, *B* allows a commanded step to end somewhere other than its intended destination. These probabilities describe what the agent believes may happen. In the world itself, a step goes exactly where it was aimed.
 
@@ -342,7 +396,7 @@ Night:  dark ── wall ── dark     blocked and successful steps look alike
 Day:       W ── wall ── green    blocked → W, successful → green
 ```
 
-For each of the four movement commands—up, down, left and right—the prior assigns probability 0.8 to reaching the neighbouring cell and probability 0.2 to remaining in the current cell:
+For each of the four movement commands (up, down, left and right) the prior assigns probability 0.8 to reaching the neighbouring cell and probability 0.2 to remaining in the current cell:
 
 $$B^0_{i s u}=\begin{cases}
 0.8,&i=\operatorname{move}(s,u),\\
@@ -354,7 +408,7 @@ There is one exception: the stay command, which leaves the agent in its current 
 
 ## Three action rules, one learning rule
 
-Learning a wall is not like learning what a cell looks like. Every step produces an observation, so *A* gains evidence constantly. A wall, in this simple world, only reveals itself when the agent walks into it, and there are just four blocked directions among a 125 state-action columns. Wandering at random, the agent tests a wall on roughly one step in thirty. In real situations, the obstacles could be detected as observations, through specific sensors, but we will not cover that here.
+Learning a wall is not like learning what a cell looks like. Every step produces an observation, so *A* gains evidence constantly. A wall, in this simple world, only reveals itself when the agent walks into it, and there are just four blocked directions among a 125 state-action columns. Wandering at random, the agent tests a wall on roughly 1 step in 30. In real situations, the obstacles could be detected as observations, through specific sensors, but we will not cover that here.
 
 The comparison changes how actions are chosen, not how *B* is updated. All three agents use the same state belief, transition counts and update equation.
 
@@ -459,6 +513,22 @@ especially useful when:
 Its advantage depends on whether the model, sensor, planning horizon and learning metric make the relevant information identifiable and useful.
 
 Novelty does not directly measure whether the model is wrong. Identical counts give identical novelty whether or not they describe the world accurately. Large counts can therefore make a mistaken column look unpromising to revisit. Contradictory observations can still correct finite counts through the updates already given, provided the agent gathers evidence and assigns it to the relevant states. What this module does not provide is a dedicated mechanism for detecting a changed world or discounting old evidence.
+
+## Does learning require 4,000 steps?
+
+**The 4,000-step run is an experimental budget, not a minimum imposed by active inference.** The agent updates its model after every observation; it does not wait until the end to use what it has learned. The curves show how model error develops over the chosen run length, not a universal threshold at which learning is complete.
+
+What matters is the evidence gathered about each unknown part of the model. A movement step is not necessarily an informative sample of the column we want to learn. Travel, repeated visits to familiar cells, noisy observations and uncertain localisation can all reduce how much useful evidence reaches that column. Clearer observations and more direct access to the unknown region can reduce the number of steps needed to reach a given accuracy. Useful prior knowledge can also reduce what remains to be learned, although a strong incorrect prior can slow correction.
+
+A larger world does not therefore imply a requirement of 4,000 steps or more. It creates more columns only if the model represents every location independently, as it does here. A task-directed agent may need to learn only the relevant region, while a structured model can share what it learns across locations—for example, by learning one common movement rule instead of relearning it in every cell.
+
+We can also control which uncertainty guides exploration by weighting the two novelty terms:
+
+$$G(\pi,\tau)=\cdots-w_A N_A(\pi,\tau)-w_B N_B(\pi,\tau).$$
+
+Larger $w_A$ makes information about observations more influential in action selection; larger $w_B$ does the same for transitions. This does not change the Dirichlet count updates after evidence arrives. It changes where the agent chooses to gather that evidence. The experiments in this module use $w_A=w_B=1$, so this additional design choice has not been explored here. For broader robotic model designs, see [Lanillos et al., *Active inference in robotics and artificial agents*](https://arxiv.org/abs/2112.01871).
+
+The useful question is therefore: **how many informative observations are needed to learn the relevant unknowns well enough for the task?** This experiment illustrates that process; it does not establish a step requirement for larger environments.
 
 ## To go further
 
