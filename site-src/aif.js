@@ -179,6 +179,48 @@ export function softmax(scores, gamma = 1) {
   return weights.map((weight) => weight / total);
 }
 
+// F_t(pi) = -ln p(o_1:t | pi): the evidence accumulated along each
+// trial-spanning policy's actions by exact filtering. Mirrors
+// aif/policy_priors.policy_free_energy.
+export function accumulatedFreeEnergy(initialBelief, B, A, observations, policies) {
+  return policies.map((policy) => {
+    let belief = initialBelief.slice();
+    let F = 0;
+    observations.forEach((o, t) => {
+      const joint = predict(belief, B, policy[t]).map((p, s) => A[o][s] * p);
+      const evidence = Math.max(joint.reduce((a, b) => a + b, 0), 1e-300);
+      F -= Math.log(evidence);
+      belief = joint.map((x) => x / evidence);
+    });
+    return F;
+  });
+}
+
+// Posterior Gamma rate after the latest reading, anchored to the prior beta0:
+// beta = beta0 + (pi - pi0).G at the fixed point, where pi0 = softmax(ln E - G/beta)
+// and pi = softmax(ln E - G/beta - F). Solved by SPM's damped iteration.
+// Mirrors aif/policy_priors.update_precision; returns the last pi0 and pi too.
+export function updatePrecision(beta0, G, F, E = null, iterations = 16) {
+  const normalise = (logits) => {
+    const largest = Math.max(...logits);
+    const weights = logits.map((l) => Math.exp(l - largest));
+    const total = weights.reduce((a, b) => a + b, 0);
+    return weights.map((w) => w / total);
+  };
+  const logE = E ? E.map(Math.log) : G.map(() => 0);
+  let beta = beta0;
+  let pi0 = [];
+  let pi = [];
+  for (let i = 0; i < iterations; i++) {
+    pi0 = normalise(G.map((g, k) => logE[k] - g / beta));
+    pi = normalise(pi0.map((p, k) => Math.log(p) - F[k]));
+    const disagreement = G.reduce((acc, g, k) => acc + (pi[k] - pi0[k]) * g, 0);
+    beta -= (beta - beta0 - disagreement) / 2;
+    if (!(beta > 0)) throw new Error("precision update produced a non-positive Gamma rate");
+  }
+  return { beta, pi0, pi };
+}
+
 // Action order matches worlds/gridworld.py ACTIONS.
 const MOVES = [
   [-1, 0], // up
@@ -504,6 +546,15 @@ async function demo() {
     }
   }
   check(worstB < 1e-9, `fixture B differs from the Python by ${worstB}`);
+
+  // Module 6's precision update against the Python, from D, A, B and the policies alone.
+  const pr = fixture.precision;
+  for (const s of pr.sequences) {
+    const F = accumulatedFreeEnergy(pr.D, pr.B, pr.A, s.observations, pr.policies);
+    const gamma = 1 / updatePrecision(pr.beta0, pr.G, F).beta;
+    check(F.every((x, k) => approx(x, s.F[k], 1e-9)), `fixture F differs for readings ${s.observations}`);
+    check(approx(gamma, s.gamma, 1e-9), `fixture gamma for readings ${s.observations}: expected ${s.gamma} got ${gamma}`);
+  }
 
   const startFix = new Array(t.rows * t.cols).fill(0);
   startFix[t.predict_from] = 1;

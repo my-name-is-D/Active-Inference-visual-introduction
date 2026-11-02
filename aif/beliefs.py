@@ -188,9 +188,45 @@ def demo():
         "predicted": predicted_once.tolist(),
     }
 
+    # Module 6's precision update, on module 4's world: two trial-spanning
+    # policies, F accumulated along each, gamma after every reading sequence.
+    # The JS recomputes F and gamma from D, A, B and the policies alone.
+    import itertools
+    from aif.agent_active_inference import expected_free_energy
+    from aif.generative_model import kind_observation_model
+    from aif.policy_priors import policy_free_energy, update_precision
+    from worlds.gridworld import dark_with_lamps
+
+    lamp_world = dark_with_lamps(
+        size=(5, 5), lamps=[(1, 4), (2, 3)], goal=(0, 4), start=(3, 1), slip=0.3
+    )
+    A_kind = kind_observation_model(lamp_world, mark_goal=True)
+    B_lamp = transition_model(lamp_world)
+    C_lamp = np.array([0.05, 0.10, 0.85])
+    D_three = np.zeros(lamp_world.n_states)
+    for cell in [(1, 3), (2, 2), (3, 1)]:
+        D_three[lamp_world.state_index(cell)] = 1.0 / 3.0
+    policies = [(3, 0), (0, 3)]                    # east then north, north then east
+    G_two = [expected_free_energy(D_three, B_lamp, A_kind, C_lamp, list(p))[0] for p in policies]
+    sequences = [list(s) for n in (1, 2) for s in itertools.product(range(3), repeat=n)]
+    precision = {
+        "D": D_three.tolist(), "A": A_kind.tolist(), "B": B_lamp.tolist(),
+        "policies": [list(p) for p in policies], "G": G_two, "beta0": 1.0,
+        "sequences": [
+            {
+                "observations": s,
+                "F": policy_free_energy(D_three, B_lamp, A_kind, s, policies).tolist(),
+                "gamma": 1.0 / update_precision(
+                    1.0, G_two, policy_free_energy(D_three, B_lamp, A_kind, s, policies)),
+            }
+            for s in sequences
+        ],
+    }
+
     out = pathlib.Path(__file__).with_name("belief_cases.json")
     out.write_text(
-        json.dumps({"updates": cases, "transitions": transitions}, indent=2) + "\n"
+        json.dumps({"updates": cases, "transitions": transitions, "precision": precision},
+                   indent=2) + "\n"
     )
 
     reloaded = json.loads(out.read_text())

@@ -27,6 +27,7 @@ PAGES = [
     ("module-3", CONTENT / "module-3.md"),
     ("module-4", CONTENT / "module-4.md"),
     ("module-5", CONTENT / "module-5.md"),
+    ("module-6", CONTENT / "module-6.md"),
 ]
 
 
@@ -180,6 +181,8 @@ def asset_version(slug):
         assets.extend([SITE_SRC / "module-5-data.js",
                        SITE_SRC / "module-5-b-data.js",
                        SITE_SRC / "module-5-joint-data.js"])
+    if slug == "module-6":
+        assets.append(SITE_SRC / "module-6-data.js")
     digest = hashlib.sha256()
     for asset in assets:
         digest.update(asset.read_bytes())
@@ -233,7 +236,8 @@ def copy_assets(out_dir):
     names = ["page.css", "aif.js", "widget.js", "agent-comparison.js",
              "agent-comparison-data.js", "figure6-curves.js",
              "figure6-curves-data.js", "module-5-data.js",
-             "module-5-b-data.js", "module-5-joint-data.js"] + [f"{slug}.js" for slug, _ in PAGES]
+             "module-5-b-data.js", "module-5-joint-data.js",
+             "module-6-data.js"] + [f"{slug}.js" for slug, _ in PAGES]
     for name in names:
         shutil.copy(SITE_SRC / name, out_dir / name)
     module_4_js = out_dir / "module-4.js"
